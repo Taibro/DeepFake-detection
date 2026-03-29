@@ -10,24 +10,49 @@ import mediapipe as mp # Import thư viện dò tìm khuôn mặt của Google
 # ==========================================
 # 1. ĐỊNH NGHĨA LẠI KIẾN TRÚC MÔ HÌNH (Giữ nguyên)
 # ==========================================
+# ==========================================
+# 1. ĐỊNH NGHĨA KIẾN TRÚC MÔ HÌNH (BẢN V2 NÂNG CẤP)
+# ==========================================
 class DeepfakeFusionModel(nn.Module):
     def __init__(self):
         super(DeepfakeFusionModel, self).__init__()
+        # 1. Nhánh Visual (Swin)
         self.swin = timm.create_model('swin_tiny_patch4_window7_224', pretrained=False, num_classes=0)
+        
+        # 2. Nhánh rPPG (Sinh tồn)
         self.rppg_net = nn.Sequential(
             nn.Conv2d(3, 32, kernel_size=3, padding=1), nn.ReLU(), nn.MaxPool2d(2, 2),
             nn.Conv2d(32, 64, kernel_size=3, padding=1), nn.ReLU(), nn.AdaptiveAvgPool2d((1, 1))
         )
+        
+        # 3. VŨ KHÍ MỚI: CƠ CHẾ CROSS-ATTENTION FUSION
+        self.attention_weights = nn.Sequential(
+            nn.Linear(768 + 64, 768 + 64),
+            nn.Sigmoid() 
+        )
+        
+        # 4. Bộ phân loại cuối cùng (Đã thêm BatchNorm1d)
         self.classifier = nn.Sequential(
-            nn.Linear(768 + 64, 128), nn.ReLU(), nn.Dropout(0.5), nn.Linear(128, 1), nn.Sigmoid()
+            nn.Linear(768 + 64, 128), 
+            nn.BatchNorm1d(128), 
+            nn.ReLU(), 
+            nn.Dropout(0.5), 
+            nn.Linear(128, 1), 
+            nn.Sigmoid()
         )
 
     def forward(self, image_input, rppg_input):
-        visual_features = self.swin(image_input)
-        bio_features = torch.flatten(self.rppg_net(rppg_input), 1)
-        combined_features = torch.cat((visual_features, bio_features), dim=1)
-        return self.classifier(combined_features)
-
+        visual_features = self.swin(image_input)                       
+        bio_features = torch.flatten(self.rppg_net(rppg_input), 1)     
+        
+        combined_features = torch.cat((visual_features, bio_features), dim=1) 
+        attention_scores = self.attention_weights(combined_features)
+        
+        # Nhân đặc trưng với điểm Attention (Lọc nhiễu)
+        attended_features = combined_features * attention_scores       
+        
+        return self.classifier(attended_features)
+    
 # ==========================================
 # 2. KHỞI TẠO AI VÀ MEDIAPIPE
 # ==========================================
@@ -36,7 +61,7 @@ model = DeepfakeFusionModel().to(device)
 
 try:
     # Thay đường dẫn tới file .pth của bạn nếu cần
-    model.load_state_dict(torch.load("fusion_model_ffpp_epoch_20.pth", map_location=device))
+    model.load_state_dict(torch.load("fusion_model_ffpp_v2_epoch_20.pth", map_location=device))
     print("✅ Đã load AI thành công!")
 except Exception as e:
     print(f"❌ Lỗi load mô hình: {e}")
