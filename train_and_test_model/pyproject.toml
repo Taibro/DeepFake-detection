@@ -1,0 +1,20 @@
+[project]
+name = "deeplearning-project-test-real-time"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11, <3.12"
+dependencies = [
+    "mediapipe==0.10.5",
+    "mss>=10.2.0",
+    "numpy>=2.4.3",
+    "opencv-python>=4.13.0.92",
+    "pillow>=12.1.1",
+    "pygetwindow>=0.0.9",
+    "timm>=1.0.25",
+    "torch>=2.0.0",
+    "torchvision",
+]
+
+[[tool.uv.index]]
+url = "https://download.pytorch.org/whl/cu121"
