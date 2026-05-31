@@ -7,9 +7,7 @@ from PIL import Image
 import numpy as np
 import mediapipe as mp # Import thư viện dò tìm khuôn mặt của Google
 
-# ==========================================
-# 1. ĐỊNH NGHĨA LẠI KIẾN TRÚC MÔ HÌNH (Giữ nguyên)
-# ==========================================
+
 # ==========================================
 # 1. ĐỊNH NGHĨA KIẾN TRÚC MÔ HÌNH (BẢN V2 NÂNG CẤP)
 # ==========================================

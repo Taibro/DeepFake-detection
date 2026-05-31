@@ -74,7 +74,7 @@ def run_scanner(mode="webcam", target_window_title=None):
     if mode == "webcam":
         cap = cv2.VideoCapture(0)
     elif mode == "window":
-        sct = mss.mss()
+        sct = mss.MSS()
 
     history_probs = collections.deque(maxlen=10) # Lưu 10 kết quả gần nhất để làm mượt
     frame_count = 0
