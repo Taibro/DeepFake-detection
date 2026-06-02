@@ -349,7 +349,12 @@ function VideoMode() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [progress, setProgress] = useState(0);
+  const [videoUrl, setVideoUrl] = useState(null);
   const inputRef = useRef(null);
+
+  useEffect(() => {
+    return () => { if (videoUrl) URL.revokeObjectURL(videoUrl); };
+  }, [videoUrl]);
 
   const analyze = async (f) => {
     setAnalyzing(true); setResult(null); setError(null); setProgress(0);
@@ -363,7 +368,14 @@ function VideoMode() {
     clearInterval(interval); setProgress(100); setAnalyzing(false);
   };
 
-  const handleFile = (f) => { if (!f) return; setFile(f); setResult(null); setError(null); };
+  const handleFile = (f) => { 
+    if (!f) return; 
+    setFile(f); 
+    setResult(null); 
+    setError(null); 
+    if (videoUrl) URL.revokeObjectURL(videoUrl);
+    setVideoUrl(URL.createObjectURL(f));
+  };
 
   const onDrop = (e) => { e.preventDefault(); setDragging(false); handleFile(e.dataTransfer.files[0]); };
 
@@ -386,6 +398,12 @@ function VideoMode() {
               <div style={{ fontSize: 13, color: "#888", textAlign: "center", marginTop: 4 }}>or click to browse — MP4, MOV, AVI</div>
             </div>
           </div>
+
+          {videoUrl && (
+            <div style={{ marginTop: "1.5rem", borderRadius: 16, overflow: "hidden", background: "#000", boxShadow: "0 8px 24px rgba(29,158,117,0.15)", border: "1px solid rgba(29,158,117,0.2)" }}>
+              <video src={videoUrl} controls autoPlay muted style={{ width: "100%", maxHeight: 400, display: "block" }} />
+            </div>
+          )}
 
           {file && (
             <div style={{ marginTop: "1rem", padding: "12px 16px", background: "#E6F1FB", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
