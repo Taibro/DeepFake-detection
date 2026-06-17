@@ -1,4 +1,4 @@
-# HUIT Deepfake Scanner 🕵️‍♂️
+#  Deepfake Scanner 
 
 A real-time Deepfake detection system that analyzes video, webcam feeds, and screen captures. The project consists of a FastAPI-based backend that handles inference and a React-Vite frontend for the user interface.
 
