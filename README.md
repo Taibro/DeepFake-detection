@@ -4,6 +4,8 @@ A real-time Deepfake detection system that analyzes video, webcam feeds, and scr
 
 ## Models and Algorithms
 
+![alt text](image.png)
+
 The core of the deepfake detection engine relies on a **Deepfake Fusion Model**, which combines visual features and biometric signals using a spatial-temporal attention mechanism. 
 
 The architecture consists of:
