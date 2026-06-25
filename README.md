@@ -22,9 +22,9 @@ Follow the instructions below to set up both the backend and frontend environmen
 
 Before running the backend, you need to download the trained model weights.
 
-1. Go to this [Google Drive Link](https://drive.google.com/drive/folders/1dVTP9NouoMxArE4al2q4fLJ92mVq_6dx?hl=vi).
-2. Download the latest model file, specifically: `fusion_model_ffpp_v2_epoch_20.pth`.
-3. Place the downloaded `.pth` file directly into the `backend/` directory.
+1. Go to this [Google Drive Link](https://drive.google.com/drive/folders/1laoOpUTVbEoQo_XHTYFWyYmc84bZ74HV?hl=vi).
+2. Download the ONNX model file (e.g., `fusion_model_v5_best.onnx`) for optimized CPU inference.
+3. Place the downloaded `.onnx` file directly into the `backend/` directory.
 
 > **Note:** The backend will still run without the weights (initializing with random weights), but it will not accurately detect deepfakes.
 

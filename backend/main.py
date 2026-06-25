@@ -15,8 +15,6 @@ from typing import Optional
 import cv2
 import numpy as np
 import torch
-import torch.nn as nn
-import timm
 from fastapi import FastAPI, File, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -25,6 +23,7 @@ from torchvision import transforms
 import mediapipe as mp
 import pygetwindow as gw
 import mss
+import onnxruntime as ort
 
 # ──────────────────────────────────────────────
 # 1. APP INIT
@@ -42,37 +41,13 @@ app.add_middleware(
 # ──────────────────────────────────────────────
 # 2. MODEL ARCHITECTURE
 # ──────────────────────────────────────────────
-class DeepfakeFusionModel(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.swin = timm.create_model(
-            "swin_tiny_patch4_window7_224", pretrained=False, num_classes=0
-        )
-        self.rppg_net = nn.Sequential(
-            nn.Conv2d(3, 32, 3, padding=1), nn.ReLU(), nn.MaxPool2d(2),
-            nn.Conv2d(32, 64, 3, padding=1), nn.ReLU(), nn.AdaptiveAvgPool2d((1, 1)),
-        )
-        self.attention_weights = nn.Sequential(
-            nn.Linear(768 + 64, 768 + 64), nn.Sigmoid()
-        )
-        self.classifier = nn.Sequential(
-            nn.Linear(768 + 64, 128), nn.BatchNorm1d(128), nn.ReLU(),
-            nn.Dropout(0.5), nn.Linear(128, 1), nn.Sigmoid(),
-        )
-
-    def forward(self, image_input, rppg_input):
-        visual = self.swin(image_input)
-        bio = torch.flatten(self.rppg_net(rppg_input), 1)
-        combined = torch.cat((visual, bio), dim=1)
-        att = self.attention_weights(combined)
-        return self.classifier(combined * att)
-
+# Architecture is now handled by ONNX Runtime
 
 # ──────────────────────────────────────────────
 # 3. GLOBAL MODEL SINGLETON
 # ──────────────────────────────────────────────
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-MODEL: Optional[DeepfakeFusionModel] = None
+MODEL: Optional[ort.InferenceSession] = None
 MODEL_LOADED = False
 
 SWIN_TRANSFORM = transforms.Compose([
@@ -88,19 +63,18 @@ RPPG_TRANSFORM = transforms.Compose([
 MP_FACE = mp.solutions.face_detection
 
 
-def get_model() -> DeepfakeFusionModel:
+def get_model():
     global MODEL, MODEL_LOADED
     if MODEL is None:
-        MODEL = DeepfakeFusionModel().to(DEVICE)
-        weights_path = "fusion_model_ffpp_v2_epoch_20.pth"
+        weights_path = "fusion_model_v5_best.onnx"
         if os.path.exists(weights_path):
-            MODEL.load_state_dict(torch.load(weights_path, map_location=DEVICE))
+            providers = ['CUDAExecutionProvider', 'CPUExecutionProvider'] if torch.cuda.is_available() else ['CPUExecutionProvider']
+            MODEL = ort.InferenceSession(weights_path, providers=providers)
             MODEL_LOADED = True
-            print("✅ Loaded trained weights.")
+            print(f"✅ Loaded ONNX model from {weights_path}.")
         else:
             MODEL_LOADED = False
-            print("⚠️  Running with random weights (no .pth found).")
-        MODEL.eval()
+            print(f"⚠️  ONNX model {weights_path} not found.")
     return MODEL
 
 
@@ -115,11 +89,19 @@ async def startup():
 def infer_face(face_rgb: np.ndarray) -> float:
     """Return probability 0-1 of deepfake."""
     model = get_model()
+    if model is None:
+        return 0.5  # Fallback if model not loaded
+
     pil = Image.fromarray(face_rgb)
-    vis = SWIN_TRANSFORM(pil).unsqueeze(0).to(DEVICE)
-    rppg = RPPG_TRANSFORM(pil).unsqueeze(0).to(DEVICE)
-    with torch.no_grad():
-        return model(vis, rppg).item()
+    vis = SWIN_TRANSFORM(pil).unsqueeze(0).numpy()
+    rppg = RPPG_TRANSFORM(pil).unsqueeze(0).numpy()
+    
+    ort_inputs = {
+        model.get_inputs()[0].name: vis,
+        model.get_inputs()[1].name: rppg
+    }
+    ort_outs = model.run(None, ort_inputs)
+    return float(ort_outs[0][0][0])
 
 
 def frame_to_base64(frame_bgr: np.ndarray, quality: int = 75) -> str:
