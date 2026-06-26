@@ -1,0 +1,300 @@
+Cell 0, Line 4: ### Điểm nổi bật của kiến trúc
+Cell 0, Line 6: Mô hình kết hợp **Swin-Small** (spatial) và **rPPG 3D CNN** (temporal physiological)
+Cell 0, Line 7: thông qua cơ chế **Stacked Multi-Head Cross-Attention** (2 lớp, 8 heads).
+Cell 0, Line 9: Nhánh rPPG xử lý **T=32 frame liên tiếp** (≈ 1.2s video, hơn 1 chu kỳ tim),
+Cell 0, Line 10: xuất ra **BIO_TOKENS=16 temporal tokens** để Cross-Attention phân tích.
+Cell 0, Line 12: | Component | Chi tiết |
+Cell 0, Line 16: | Cross-Attention | **2 lớp xếp chồng**, mỗi lớp: MHA + FFN + Residual |
+Cell 0, Line 17: | Attention heads | 8 heads, softmax trên 16 vị trí temporal |
+Cell 0, Line 46: 6.5. **Cross-Attention Weight Analysis** (đánh giá thực nghiệm attention hoạt động đúng)
+Cell 4, Line 0: class Config:
+    # ── Paths ──
+    DRIVE_ROOT   = '/content/drive/MyDrive/DoAn_Nhom4'
+    FF_ZIP       = f'{DRIVE_ROOT}/FaceForensics.zip'
+    CELEB_ZIP    = f'{DRIVE_ROOT}/Celeb-DF-v2.zip'
+    EXTRACT_DIR  = '/content/dataset'
+    CLIPS_DIR    = '/content/clips'
+    FF_CLIPS     = f'{CLIPS_DIR}/ffpp'
+    CELEB_CLIPS  = f'{CLIPS_DIR}/celeb_df_v2'
+    SAVE_DIR     = f'{DRIVE_ROOT}/weights_v5'
+
+    # ── Clip Extraction ──
+    # T=32 frames @ 25fps ≈ 1280ms window — đủ để capture hơn 1 chu kỳ tim (60bpm)
+    T                 = 32
+    CLIPS_PER_VIDEO   = 3     # clips trích từ mỗi video (giảm vì T dài hơn)
+    FACE_CONFIDENCE   = 0.7
+    FACE_PAD_X        = 0.15
+    FACE_PAD_Y_TOP    = 0.40
+    FACE_PAD_Y_BOTTOM = 0.20
+    FACE_SIZE         = 112   # face crop resolution (px)
+
+    # ── Model ──
+    SPATIAL_DIM = 768    # Swin-Tiny output dim
+    BIO_DIM     = 64     # rPPG 3D CNN per-token feature dim
+    BIO_TOKENS  = T // 2 # số temporal token rPPG giữ lại cho Cross-Attention (=16)
+                          # T_out > 1 để softmax không suy biến.
+    ATTN_HEADS  = 8       # truyền vào nn.MultiheadAttention (tăng cho Stacked Cross-Attention)
+    DROPOUT     = 0.3
+    CROSS_ATTN_LAYERS = 2  # số lớp Cross-Attention xếp chồng
+
+    # ── Training ──
+    # BATCH_SIZE = 8 (giữ nguyên nhờ GPU A100/L4 có đủ VRAM)
+    BATCH_SIZE           = 8
+    EPOCHS               = 25
+    LR_SWIN              = 2e-5   # pretrained backbone: fine-tune nhẹ
+    LR_OTHER             = 1e-4   # các layer mới: học nhanh hơn
+    WEIGHT_DECAY         = 1e-4
+    LABEL_SMOOTHING      = 0.05
+    EARLY_STOP_PATIENCE  = 5
+    GRAD_CLIP            = 1.0
+    ABLATION_EPOCHS      = 10     # epochs cho ablation study
+
+    SEED = 42
+
+
+def set_seed(seed=Config.SEED):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+
+set_seed()
+for k, v in vars(Config).items():
+    if not k.startswith('_'):
+        print(f'  {k:<22} = {v}')
+Cell 5, Line 3: **Đặc điểm chính của cách chuẩn bị dữ liệu:**
+Cell 5, Line 4: Mỗi clip bao gồm **T=32 frame liên tiếp** từ cùng một video (≈ 1.2 giây ở 25fps),
+Cell 5, Line 5: lưu dưới dạng `.npy` shape `(32, FACE_SIZE, FACE_SIZE, 3)` (BGR).
+Cell 5, Line 6: Đoạn video dài này cho phép nhánh rPPG phân tích biến động màu sắc theo thời gian
+Cell 5, Line 7: với độ phân giải cao, bao trùm hơn 1 chu kỳ tim.
+Cell 5, Line 9: > **Note:** Chỉ cần chạy Section 1 một lần. Nếu clips đã tồn tại, bỏ qua đến Section 2.
+Cell 7, Line 5: Trích xuất face clips từ video dùng MediaPipe Tasks API (mediapipe >= 0.10.14).
+Cell 7, Line 19: # ── Detect face trong frame đầu ─────────────────────────────────────────
+Cell 7, Line 27: # Tasks API: dùng mp.Image thay vì process(rgb)
+Cell 7, Line 39: # Tasks API trả về pixel coords trực tiếp (không phải relative như solutions)
+Cell 7, Line 53: # ── Trích clips ──────────────────────────────────────────────────────────
+Cell 7, Line 82: '''Xử lý tất cả video trong danh sách thư mục — dùng MediaPipe Tasks API.'''
+Cell 7, Line 83: # Khởi tạo detector MỘT LẦN bên ngoài vòng lặp (tránh overhead)
+Cell 10, Line 3: **Thiết kế dataset cho temporal input:**
+Cell 10, Line 4: - Mỗi sample = 1 clip `.npy` có shape `(T, H, W, 3)` BGR
+Cell 10, Line 6: - **Bio branch**: toàn bộ T frames → YCrCb → normalize [0,1] → shape `(T, 3, 64, 64)`
+Cell 10, Line 7: - Geometric augmentation áp **nhất quán** cho tất cả T frames (cùng flip/rotate)
+Cell 10, Line 8: - ColorJitter chỉ áp cho spatial branch:
+Cell 10, Line 9: lý do — nhánh bio cần giữ nguyên màu sắc YCrCb để model học temporal color variation
+Cell 11, Line 10: BIO_SIZE = 64  # spatial size for rPPG input (low-res, cần thông tin màu sắc)
+Cell 11, Line 23: Áp augmentation geometric lên TẤT CẢ frames với cùng random state.
+Cell 11, Line 24: QUAN TRỌNG: phải dùng cùng transform cho mỗi frame để đảm bảo
+Cell 11, Line 25: temporal coherence — rPPG signal phụ thuộc vào consistency theo thời gian.
+Cell 11, Line 51: # Geometric augmentation — nhất quán cho tất cả frames
+Cell 11, Line 55: mid = Config.T // 2  # index frame giữa clip
+Cell 11, Line 61: # ColorJitter chỉ cho spatial — KHÔNG áp cho bio vì sẽ làm nhiễu
+Cell 11, Line 62: # tín hiệu màu sắc temporal mà rPPG net cần học
+Cell 12, Line 23: Trích video_id từ tên clip.
+Cell 12, Line 25: Dùng rfind để tránh false-split nếu video_id có "_clip" trong tên.
+Cell 12, Line 37: # ── Split by video ID — tránh data leakage (frames cùng video cùng split) ─────
+Cell 12, Line 58: # ── Celeb-DF-v2: cross-dataset test (không chạm vào khi train/val) ────────────
+Cell 13, Line 4: # WeightedRandomSampler để cân bằng class imbalance (FF++ có nhiều fake hơn real)
+Cell 14, Line 4: 3D CNN gồm 4 block xử lý chuỗi T=32 frame YCrCb. Block cuối dùng
+Cell 14, Line 5: `AdaptiveAvgPool3d((BIO_TOKENS,1,1))` — chỉ pool spatial, **giữ lại `BIO_TOKENS=16`
+Cell 14, Line 6: token theo thời gian**. Đây là thiết kế bắt buộc để Cross-Attention có ý nghĩa
+Cell 14, Line 7: toán học thực sự.
+Cell 14, Line 10: `nn.MultiheadAttention` với `num_heads = 8`, xếp chồng 2 lớp.
+Cell 14, Line 11: Mỗi lớp bao gồm: Multi-Head Cross-Attention + FFN + Residual + LayerNorm.
+Cell 14, Line 12: - **Query**: 1 token từ spatial branch (Swin-Small) — *"đặc trưng không gian trên khuôn mặt"*
+Cell 14, Line 13: - **Key/Value**: 16 token từ bio branch (rPPG) — *"tín hiệu sinh học ở 16 đoạn thời gian"*
+Cell 14, Line 15: Lớp thứ nhất học cách chọn lọc thông tin temporal phù hợp. Lớp thứ hai tinh chỉnh
+Cell 14, Line 16: thêm dựa trên kết quả fusion của lớp trước, cho phép kết hợp ở nhiều mức trừu tượng.
+Cell 15, Line 0: class rPPGNetwork3D(nn.Module):
+    '''
+    Temporal Physiological Feature Extractor — TOKEN SEQUENCE output.
+
+    Input:  (B, T, 3, 64, 64) — YCrCb face clips (T=32 consecutive frames)
+    Output: (B, BIO_TOKENS, BIO_DIM) — sequence of 16 temporal physiological tokens
+
+    Mạng 3D CNN trích xuất tín hiệu rPPG từ chuỗi frame liên tiếp. Với T=32 frame
+    (≈ 1.2s video), mạng bắt được hơn 1 chu kỳ tim hoàn chỉnh (60bpm = 1s/nhịp),
+    cung cấp đủ thông tin sinh học cho Cross-Attention.
+
+    Block design:
+      Block 1:  (B, 3,   T,    64, 64) → (B, 32,  T,    32, 32)  [pool spatial only]
+      Block 2:  (B, 32,  T,    32, 32) → (B, 64,  T//2, 16, 16)  [pool spatial + temporal]
+      Block 2b: (B, 64,  T//2, 16, 16) → (B, 128, T//2, 8,  8)   [pool spatial only, deeper]
+      Block 3:  (B, 128, T//2, 8,  8)  → (B, BIO_DIM, BIO_TOKENS, 1, 1) [adaptive pool]
+    '''
+    def __init__(self, bio_dim=Config.BIO_DIM, bio_tokens=Config.BIO_TOKENS):
+        super().__init__()
+        self.bio_tokens = bio_tokens
+        self.features = nn.Sequential(
+            # Block 1: chỉ pool spatial — giữ full temporal resolution
+            nn.Conv3d(3, 32, kernel_size=(1, 3, 3), padding=(0, 1, 1)),
+            nn.BatchNorm3d(32),
+            nn.ReLU(inplace=True),
+            nn.MaxPool3d(kernel_size=(1, 2, 2), stride=(1, 2, 2)),
+
+            # Block 2: pool cả temporal và spatial (T: 32 → 16)
+            nn.Conv3d(32, 64, kernel_size=(3, 3, 3), padding=(1, 1, 1)),
+            nn.BatchNorm3d(64),
+            nn.ReLU(inplace=True),
+            nn.MaxPool3d(kernel_size=(2, 2, 2), stride=(2, 2, 2)),
+
+            # Block 2b: deeper features — pool CHỈ spatial, GIỮ temporal
+            nn.Conv3d(64, 128, kernel_size=(3, 3, 3), padding=(1, 1, 1)),
+            nn.BatchNorm3d(128),
+            nn.ReLU(inplace=True),
+            nn.MaxPool3d(kernel_size=(1, 2, 2), stride=(1, 2, 2)),
+
+            # Block 3: final features — adaptive pool giữ bio_tokens vị trí thời gian
+            nn.Conv3d(128, bio_dim, kernel_size=(3, 3, 3), padding=(1, 1, 1)),
+            nn.BatchNorm3d(bio_dim),
+            nn.ReLU(inplace=True),
+            nn.AdaptiveAvgPool3d((bio_tokens, 1, 1))   # giữ chiều thời gian
+        )
+
+    def forward(self, x):
+        # x: (B, T, 3, H, W) — dataset format
+        # → (B, 3, T, H, W) — 3D conv expects channel-first
+        x = x.permute(0, 2, 1, 3, 4).contiguous()
+        feat = self.features(x)                  # (B, bio_dim, bio_tokens, 1, 1)
+        feat = feat.squeeze(-1).squeeze(-1)       # (B, bio_dim, bio_tokens)
+        return feat.permute(0, 2, 1).contiguous() # (B, bio_tokens, bio_dim) — token sequence
+Cell 16, Line 0: class CrossAttentionLayer(nn.Module):
+    '''
+    Một lớp Cross-Attention đơn lẻ bao gồm:
+    - Multi-Head Cross-Attention (Q từ spatial, K/V từ bio)
+    - Residual connection + LayerNorm
+    - Feed-Forward Network (FFN) + Residual connection + LayerNorm
+    '''
+    def __init__(self, spatial_dim, num_heads, dropout=0.1, ffn_ratio=4):
+        super().__init__()
+        self.cross_attn = nn.MultiheadAttention(
+            embed_dim=spatial_dim,
+            num_heads=num_heads,
+            dropout=dropout,
+            batch_first=True
+        )
+        self.norm1 = nn.LayerNorm(spatial_dim)
+        self.norm2 = nn.LayerNorm(spatial_dim)
+        self.dropout1 = nn.Dropout(dropout)
+        self.dropout2 = nn.Dropout(dropout)
+
+        # Feed-Forward Network (FFN)
+        ffn_hidden = spatial_dim // ffn_ratio
+        self.ffn = nn.Sequential(
+            nn.Linear(spatial_dim, ffn_hidden),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear(ffn_hidden, spatial_dim),
+        )
+
+    def forward(self, query, key_value, return_attn=False):
+        '''
+        query:     (B, 1, D) — spatial token
+        key_value: (B, BIO_TOKENS, D) — projected bio tokens
+        '''
+        # Cross-Attention + Residual + LayerNorm
+        attended, attn_w = self.cross_attn(
+            query, key_value, key_value,
+            need_weights=True, average_attn_weights=True)
+        query = self.norm1(query + self.dropout1(attended))
+
+        # FFN + Residual + LayerNorm
+        query = self.norm2(query + self.dropout2(self.ffn(query)))
+
+        if return_attn:
+            return query, attn_w
+        return query
+
+
+class StackedCrossAttentionFusion(nn.Module):
+    '''
+    Stacked Multi-Head Cross-Attention Fusion.
+
+    Spatial features (Swin) → Query Q   : 1 token
+    Bio features (rPPG 3D)  → Key/Value : BIO_TOKENS=16 tokens
+
+    Gồm N lớp CrossAttentionLayer xếp chồng. Mỗi lớp tinh chỉnh Q dựa trên
+    thông tin từ K/V, cho phép mô hình học cách kết hợp spatial và temporal
+    ở nhiều mức độ trừu tượng khác nhau.
+    '''
+    def __init__(self, spatial_dim=Config.SPATIAL_DIM, bio_dim=Config.BIO_DIM,
+                 num_heads=Config.ATTN_HEADS, num_layers=Config.CROSS_ATTN_LAYERS,
+                 dropout=0.1):
+        super().__init__()
+        assert spatial_dim % num_heads == 0, (
+            f'spatial_dim ({spatial_dim}) phải chia hết cho num_heads ({num_heads})')
+
+        # Project mỗi bio token (bio_dim-d) lên spatial_dim (768-d) để làm K, V
+        self.bio_proj = nn.Sequential(
+            nn.Linear(bio_dim, spatial_dim),
+            nn.LayerNorm(spatial_dim)
+        )
+
+        # N lớp Cross-Attention xếp chồng
+        self.layers = nn.ModuleList([
+            CrossAttentionLayer(spatial_dim, num_heads, dropout)
+            for _ in range(num_layers)
+        ])
+
+    def forward(self, spatial_feat, bio_tokens, return_attn=False):
+        '''
+        spatial_feat : (B, 768)              — từ Swin Transformer
+        bio_tokens   : (B, BIO_TOKENS, 64)    — từ rPPG 3D CNN (sequence!)
+        Returns      : (B, 768) fused features
+                       [+ (B, BIO_TOKENS) attention weights nếu return_attn=True]
+        '''
+        Q  = spatial_feat.unsqueeze(1)        # (B, 1, 768)
+        KV = self.bio_proj(bio_tokens)        # (B, BIO_TOKENS, 768)
+
+        attn_w_last = None
+        for layer in self.layers:
+            if return_attn:
+                Q, attn_w_last = layer(Q, KV, return_attn=True)
+            else:
+                Q = layer(Q, KV)
+
+        fused = Q.squeeze(1)                  # (B, 768)
+
+        if return_attn:
+            return fused, attn_w_last.squeeze(1)  # attn_w: (B, BIO_TOKENS)
+        return fused
+Cell 19, Line 1: '''BCELoss + label smoothing để giảm overconfidence.'''
+Cell 19, Line 13: '''Dừng training khi val AUC không cải thiện sau `patience` epochs.'''
+Cell 19, Line 34: '''Equal Error Rate (%) via brentq — chính xác hơn nanargmin.'''
+Cell 20, Line 4: # Differential LR: Swin pretrained → nhỏ; các layer mới → lớn hơn
+Cell 24, Line 1: ## Section 6.5: Cross-Attention Weight Analysis (đánh giá thực nghiệm)
+Cell 24, Line 3: Mục này tồn tại để chứng minh bằng thực nghiệm rằng `softmax` trong
+Cell 24, Line 4: `CrossAttentionFusion` **hoạt động đúng nghĩa** — tạo ra phân phối xác suất
+Cell 24, Line 5: thực sự trên các temporal token, không suy biến về hằng số.
+Cell 24, Line 7: Với `K, V` có `BIO_TOKENS=4` token, trọng số attention là một phân phối có thể khác nhau giữa
+Cell 24, Line 8: các sample, giữa các epoch huấn luyện, và (lý tưởng) giữa class Real vs Fake.
+Cell 24, Line 10: Nếu biểu đồ dưới đây cho thấy **phương sai khác 0** và **phân phối không đồng nhất
+Cell 24, Line 11: 1/4 = 0.25 cho mọi token**, đó là bằng chứng cho thấy attention thực sự "hoạt động"
+Cell 24, Line 12: chứ không phải một phép chiếu tuyến tính cố định bị ngụy trang.
+Cell 25, Line 3: Chạy forward với return_attn=True trên val set, thu thập:
+Cell 25, Line 4: - attn_weights: (N, BIO_TOKENS) — trọng số attention mỗi sample
+Cell 25, Line 29: print(f'  → Nếu std ≈ 0 across all samples: attention gần như đồng nhất (uniform),')
+Cell 25, Line 30: print(f'    vẫn hợp lệ về toán học nhưng yếu về mặt "dynamic selectivity".')
+Cell 25, Line 31: print(f'  → Nếu std > 0 rõ rệt: model đang phân biệt các token thời gian khác nhau.')
+Cell 25, Line 33: # ── So sánh phân phối attention: Real vs Fake ───────────────────────────────────
+Cell 25, Line 64: print('\nNote khi viết paper: nếu Real vs Fake cho thấy pattern attention khác')
+Cell 25, Line 65: print('biệt rõ rệt (vd: Fake tập trung mạnh vào 1-2 token cụ thể, Real phân bố đều')
+Cell 25, Line 66: print('hơn), đây là bằng chứng thực nghiệm trực tiếp hỗ trợ claim "the network')
+Cell 26, Line 3: Model **chưa từng thấy** Celeb-DF-v2 — đây là test generalization thực sự.
+Cell 27, Line 1: print('LỖI: test_loader của Celeb-DF-v2 đang trống (0 samples).')
+Cell 27, Line 2: print('Vui lòng quay lại chạy cell Extract Celeb-DF-v2 clips (Section 1), sau đó chạy lại cell DataLoader (Section 2) để cập nhật.')
+Cell 28, Line 3: **Thiết kế đảm bảo tính công bằng:**
+Cell 28, Line 4: - Tất cả variants: `ABLATION_EPOCHS` epochs, cùng scheduler, cùng gradient clip
+Cell 28, Line 5: - Swin-based variants: differential LR (Swin=2e-5, other=1e-4) nhất quán
+Cell 28, Line 6: - rPPG-only variant: uniform LR=1e-4 (không có Swin)
+Cell 28, Line 7: - Đây là quick comparison — explicitly noted, không dùng để claim absolute numbers
+Cell 30, Line 2: Train ablation variant với điều kiện nhất quán.
+Cell 30, Line 3: Fair so với V5 full model:
+Cell 30, Line 4: - Cùng differential LR (Swin vs others) nếu có Swin
+Cell 30, Line 5: - Cùng CosineAnnealingLR schedule
+Cell 30, Line 6: - Cùng gradient clipping
+Cell 30, Line 7: Note: ít epochs hơn full training — kết quả là indicative, không absolute.
+Cell 30, Line 13: # Differential LR nhất quán — nếu có Swin thì Swin LR thấp hơn
+Cell 30, Line 22: # rPPG-only: không có Swin, dùng uniform LR
