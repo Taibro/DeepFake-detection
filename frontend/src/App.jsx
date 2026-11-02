@@ -1,125 +1,530 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Camera, Monitor, Film, Wifi, WifiOff, RefreshCw, Play, Square, Upload, AlertCircle, CheckCircle, Activity, ChevronDown, Zap, Eye, Maximize, Minimize, SlidersHorizontal } from "lucide-react";
+import { Camera, Monitor, Film, RefreshCw, Play, Square, Upload, Maximize, Minimize, ExternalLink } from "lucide-react";
 
 const API = "http://localhost:8000";
 
-const palette = {
-  teal50: "#E1F5EE", teal100: "#9FE1CB", teal400: "#1D9E75", teal600: "#0F6E56",
-  blue50: "#E6F1FB", blue100: "#B5D4F4", blue400: "#378ADD", blue600: "#185FA5",
-  green50: "#EAF3DE", green400: "#639922",
+// Professional Human Designer Palette - HUIT University Corporate Identity
+const theme = {
+  huitNavy: "#003b71",       // Official HUIT Deep Navy Blue
+  huitNavyHover: "#002b53",
+  huitBlue: "#005baa",       // HUIT Accent Blue
+  huitRed: "#c91414",        // HUIT Logo Red
+  huitRedHover: "#a60f0f",
+  
+  bgCard: "rgba(255, 255, 255, 0.94)",
+  bgCardHeader: "rgba(249, 250, 251, 0.96)",
+  border: "rgba(209, 213, 219, 0.8)",
+  borderLight: "rgba(229, 231, 235, 0.8)",
+  
+  textDark: "#111827",       // Slate 900
+  textMuted: "#4b5563",      // Slate 600
+  textLight: "#9ca3af",      // Slate 400
+
+  successGreen: "#059669",
+  successBg: "#ecfdf5",
+  successBorder: "#a7f3d0",
+
+  alertRed: "#dc2626",
+  alertBg: "#fef2f2",
+  alertBorder: "#fecaca",
+
+  radius: "8px",
+  shadowCard: "0 6px 24px -2px rgba(0, 0, 0, 0.09), 0 2px 6px -1px rgba(0, 0, 0, 0.05)",
+  fontSans: "'Roboto', 'Segoe UI', -apple-system, BlinkMacSystemFont, Arial, sans-serif",
+  fontMono: "'Consolas', 'Courier New', monospace",
 };
 
 const styles = {
-  app: { minHeight: "100vh", background: "linear-gradient(135deg, #E6F1FB 0%, #E1F5EE 50%, #EAF3DE 100%)", fontFamily: "'DM Sans', system-ui, sans-serif", padding: "0" },
-  header: { background: "rgba(255,255,255,0.85)", backdropFilter: "blur(20px)", borderBottom: "1px solid rgba(29,158,117,0.15)", padding: "0 2rem", position: "sticky", top: 0, zIndex: 100 },
-  headerInner: { maxWidth: 1100, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: 64 },
-  logo: { display: "flex", alignItems: "center", gap: 10 },
-  logoIcon: { width: 36, height: 36, background: "linear-gradient(135deg, #1D9E75, #378ADD)", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center" },
-  logoText: { fontSize: 17, fontWeight: 700, background: "linear-gradient(135deg, #0F6E56, #185FA5)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" },
-  badge: (ok) => ({ display: "flex", alignItems: "center", gap: 6, padding: "4px 12px", borderRadius: 20, fontSize: 12, fontWeight: 600, background: ok ? "#E1F5EE" : "#FCEBEB", color: ok ? "#0F6E56" : "#A32D2D", border: `1px solid ${ok ? "#9FE1CB" : "#F7C1C1"}` }),
-  main: { maxWidth: 1100, margin: "0 auto", padding: "2rem" },
-  tabs: { display: "flex", gap: 8, marginBottom: "1.5rem", background: "rgba(255,255,255,0.7)", padding: 6, borderRadius: 16, border: "1px solid rgba(29,158,117,0.15)", width: "fit-content" },
-  tab: (active) => ({ display: "flex", alignItems: "center", gap: 8, padding: "10px 20px", borderRadius: 12, border: "none", cursor: "pointer", fontSize: 14, fontWeight: active ? 600 : 400, transition: "all 0.2s", background: active ? "linear-gradient(135deg, #1D9E75, #378ADD)" : "transparent", color: active ? "white" : "#5F5E5A" }),
-  grid: { display: "grid", gap: "1.5rem", alignItems: "start", transition: "all 0.3s ease" },
-  card: { background: "rgba(255,255,255,0.9)", borderRadius: 20, border: "1px solid rgba(29,158,117,0.12)", overflow: "hidden", boxShadow: "0 4px 24px rgba(29,158,117,0.08)", transition: "all 0.3s ease" },
-  cardHeader: { padding: "1.25rem 1.5rem", borderBottom: "1px solid rgba(29,158,117,0.1)", display: "flex", alignItems: "center", justifyContent: "space-between" },
-  cardTitle: { fontSize: 15, fontWeight: 600, color: "#2c3e50", display: "flex", alignItems: "center", gap: 8 },
-  cardBody: { padding: "1.5rem" },
-  videoBox: { background: "#0a1628", borderRadius: 12, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", transition: "height 0.2s ease" },
-  placeholder: { display: "flex", flexDirection: "column", alignItems: "center", gap: 12, color: "rgba(255,255,255,0.4)" },
-  btn: (variant = "primary") => ({
-    display: "flex", alignItems: "center", gap: 8, padding: "11px 22px", borderRadius: 12, border: "none", cursor: "pointer", fontSize: 14, fontWeight: 600, transition: "all 0.2s",
-    background: variant === "primary" ? "linear-gradient(135deg, #1D9E75, #378ADD)" : variant === "danger" ? "#E24B4A" : variant === "outline" ? "transparent" : "rgba(29,158,117,0.1)",
-    color: variant === "outline" ? "#1D9E75" : "white",
-    border: variant === "outline" ? "1px solid #1D9E75" : "none",
+  appWrapper: {
+    minHeight: "100vh",
+    fontFamily: theme.fontSans,
+    color: theme.textDark,
+    display: "flex",
+    flexDirection: "column",
+  },
+  header: {
+    backgroundColor: "rgba(255, 255, 255, 0.96)",
+    backdropFilter: "blur(16px)",
+    WebkitBackdropFilter: "blur(16px)",
+    borderBottom: "2px solid #003b71",
+    padding: "0 1.5rem",
+    boxShadow: "0 2px 12px rgba(0, 0, 0, 0.06)",
+    position: "sticky",
+    top: 0,
+    zIndex: 100,
+  },
+  headerInner: {
+    maxWidth: 1360,
+    margin: "0 auto",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "12px 0",
+  },
+  brandGroup: {
+    display: "flex",
+    alignItems: "center",
+    gap: 14,
+  },
+  logoImg: {
+    width: 52,
+    height: 52,
+    borderRadius: "50%",
+    objectFit: "contain",
+    boxShadow: "0 2px 8px rgba(0, 59, 113, 0.15)",
+    transition: "transform 0.25s ease",
+    cursor: "pointer",
+  },
+  instTitle: {
+    fontSize: 12,
+    fontWeight: 700,
+    color: theme.huitNavy,
+    letterSpacing: "0.5px",
+    textTransform: "uppercase",
+  },
+  deptTitle: {
+    fontSize: 11,
+    color: "#6b7280",
+    fontWeight: 500,
+    marginTop: 1,
+  },
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: 700,
+    color: "#111827",
+    marginTop: 2,
+  },
+  statusGroup: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    fontSize: 12,
+  },
+  statusPill: (isOk) => ({
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    padding: "6px 12px",
+    borderRadius: "6px",
+    backgroundColor: isOk ? theme.successBg : theme.alertBg,
+    color: isOk ? theme.successGreen : theme.alertRed,
+    border: `1px solid ${isOk ? theme.successBorder : theme.alertBorder}`,
+    fontWeight: 600,
+    fontSize: 12,
   }),
-  meter: (prob, fake) => ({ width: "100%", height: 8, background: "#E1F5EE", borderRadius: 4, overflow: "hidden", position: "relative" }),
-  meterFill: (prob, fake) => ({ height: "100%", width: `${prob * 100}%`, background: fake ? "linear-gradient(90deg, #EF9F27, #E24B4A)" : "linear-gradient(90deg, #1D9E75, #378ADD)", borderRadius: 4, transition: "width 0.4s ease" }),
-  statRow: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid rgba(29,158,117,0.08)" },
-  select: { width: "100%", padding: "10px 14px", borderRadius: 10, border: "1px solid rgba(29,158,117,0.25)", background: "white", fontSize: 14, color: "#2c3e50", appearance: "none", cursor: "pointer" },
-  uploadZone: (drag) => ({ border: `2px dashed ${drag ? "#1D9E75" : "rgba(29,158,117,0.3)"}`, borderRadius: 16, padding: "3rem", display: "flex", flexDirection: "column", alignItems: "center", gap: 12, cursor: "pointer", transition: "all 0.2s", background: drag ? "rgba(29,158,117,0.05)" : "transparent" }),
-  pill: (fake) => ({ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 12px", borderRadius: 20, fontSize: 12, fontWeight: 700, background: fake ? "#FCEBEB" : "#E1F5EE", color: fake ? "#A32D2D" : "#0F6E56" }),
-  pulse: { width: 8, height: 8, borderRadius: "50%", background: "#1D9E75", animation: "pulse 1.5s infinite" },
+  modelPill: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    padding: "6px 12px",
+    borderRadius: "6px",
+    backgroundColor: "#eff6ff",
+    color: theme.huitNavy,
+    border: "1px solid #bfdbfe",
+    fontWeight: 600,
+    fontSize: 12,
+  },
+  main: {
+    maxWidth: 1360,
+    width: "100%",
+    margin: "0 auto",
+    padding: "1.5rem 1.5rem 3rem 1.5rem",
+    flex: 1,
+  },
+  navBar: {
+    display: "flex",
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
+    backdropFilter: "blur(12px)",
+    borderRadius: theme.radius,
+    boxShadow: "0 2px 10px rgba(0,0,0,0.06)",
+    border: `1px solid ${theme.border}`,
+    overflow: "hidden",
+    marginBottom: "1.5rem",
+  },
+  navBtn: (isActive) => ({
+    flex: 1,
+    padding: "13px 20px",
+    backgroundColor: isActive ? theme.huitNavy : "transparent",
+    color: isActive ? "#ffffff" : "#374151",
+    fontWeight: isActive ? 700 : 500,
+    fontSize: 13.5,
+    border: "none",
+    borderRight: `1px solid ${theme.borderLight}`,
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+  }),
+  grid: {
+    display: "grid",
+    gap: "1.5rem",
+    alignItems: "start",
+  },
+  card: {
+    backgroundColor: theme.bgCard,
+    backdropFilter: "blur(16px)",
+    WebkitBackdropFilter: "blur(16px)",
+    border: `1px solid ${theme.border}`,
+    borderRadius: theme.radius,
+    boxShadow: theme.shadowCard,
+    overflow: "hidden",
+    transition: "box-shadow 0.25s ease, transform 0.25s ease",
+  },
+  cardHeader: {
+    padding: "13px 18px",
+    borderBottom: `1px solid ${theme.borderLight}`,
+    backgroundColor: theme.bgCardHeader,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  cardTitle: {
+    fontSize: 13,
+    fontWeight: 700,
+    color: theme.huitNavy,
+    textTransform: "uppercase",
+    letterSpacing: "0.4px",
+  },
+  cardSubtitle: {
+    fontSize: 12,
+    color: theme.textMuted,
+    fontWeight: 500,
+  },
+  cardBody: {
+    padding: "18px",
+  },
+  videoFrame: {
+    backgroundColor: "#070b14",
+    borderRadius: "6px",
+    border: "1px solid #1f2937",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+    overflow: "hidden",
+    boxShadow: "inset 0 0 20px rgba(0,0,0,0.6)",
+  },
+  hudBadge: {
+    backgroundColor: "rgba(0, 0, 0, 0.8)",
+    backdropFilter: "blur(4px)",
+    color: "#f9fafb",
+    padding: "4px 8px",
+    borderRadius: "4px",
+    fontSize: 11,
+    fontWeight: 500,
+    fontFamily: theme.fontMono,
+    border: "1px solid rgba(255,255,255,0.15)",
+  },
+  btnPrimary: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 7,
+    padding: "9px 18px",
+    fontSize: 13,
+    fontWeight: 600,
+    backgroundColor: theme.huitNavy,
+    color: "#ffffff",
+    border: "none",
+    borderRadius: "5px",
+    cursor: "pointer",
+    boxShadow: "0 2px 6px rgba(0, 59, 113, 0.25)",
+    transition: "all 0.15s ease",
+  },
+  btnDanger: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 7,
+    padding: "9px 18px",
+    fontSize: 13,
+    fontWeight: 600,
+    backgroundColor: theme.huitRed,
+    color: "#ffffff",
+    border: "none",
+    borderRadius: "5px",
+    cursor: "pointer",
+    boxShadow: "0 2px 6px rgba(201, 20, 20, 0.25)",
+    transition: "all 0.15s ease",
+  },
+  btnOutline: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    padding: "8px 14px",
+    fontSize: 13,
+    fontWeight: 500,
+    backgroundColor: "#ffffff",
+    color: "#374151",
+    border: `1px solid ${theme.border}`,
+    borderRadius: "5px",
+    cursor: "pointer",
+    transition: "all 0.15s ease",
+  },
+  select: {
+    backgroundColor: "#ffffff",
+    color: theme.textDark,
+    border: `1px solid ${theme.border}`,
+    padding: "8px 12px",
+    fontSize: 13,
+    borderRadius: "5px",
+    outline: "none",
+    cursor: "pointer",
+    transition: "border-color 0.15s ease",
+  },
+  sliderContainer: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "rgba(243, 244, 246, 0.8)",
+    border: `1px solid ${theme.border}`,
+    borderRadius: "6px",
+    padding: "10px 8px",
+    width: 36,
+  },
+  table: {
+    width: "100%",
+    borderCollapse: "collapse",
+    fontSize: 12,
+  },
+  tableRow: {
+    borderBottom: `1px solid ${theme.borderLight}`,
+  },
+  tableKey: {
+    padding: "9px 6px",
+    color: theme.textMuted,
+    fontWeight: 500,
+  },
+  tableVal: {
+    padding: "9px 6px",
+    color: theme.textDark,
+    fontWeight: 600,
+    textAlign: "right",
+  },
+  // Professional Academic Footer
+  footer: {
+    backgroundColor: "rgba(255, 255, 255, 0.98)",
+    backdropFilter: "blur(16px)",
+    borderTop: "2px solid #003b71",
+    marginTop: "auto",
+    boxShadow: "0 -2px 12px rgba(0, 0, 0, 0.06)",
+  },
+  footerInner: {
+    maxWidth: 1360,
+    margin: "0 auto",
+    padding: "2.5rem 1.5rem 1.75rem 1.5rem",
+    display: "grid",
+    gridTemplateColumns: "1.1fr 1.7fr 1.2fr",
+    gap: "2.5rem",
+  },
+  footerColTitle: {
+    fontSize: 13,
+    fontWeight: 700,
+    color: theme.huitNavy,
+    textTransform: "uppercase",
+    letterSpacing: "0.5px",
+    marginBottom: "12px",
+    borderBottom: "1px solid #e5e7eb",
+    paddingBottom: "6px",
+  },
+  footerText: {
+    fontSize: 12,
+    color: "#4b5563",
+    lineHeight: 1.85,
+  },
+  footerBottomBar: {
+    borderTop: "1px solid #e5e7eb",
+    backgroundColor: "rgba(249, 250, 251, 0.95)",
+    padding: "12px 1.5rem",
+    textAlign: "center",
+    fontSize: 12,
+    color: "#6b7280",
+  },
 };
 
-function ProbabilityMeter({ prob, label }) {
+// Clean Professional Metric Gauge
+function MetricGauge({ prob, label }) {
   const isFake = prob > 0.5;
-  const displayPct = isFake ? prob * 100 : (1 - prob) * 100;
+  const confidence = isFake ? prob * 100 : (1 - prob) * 100;
   return (
-    <div>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-        <span style={{ fontSize: 13, color: "#5F5E5A" }}>{label}</span>
-        <span style={{ fontSize: 13, fontWeight: 700, color: isFake ? "#A32D2D" : "#0F6E56" }}>{displayPct.toFixed(1)}%</span>
+    <div style={{ marginTop: 12, marginBottom: 14 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 6 }}>
+        <span style={{ color: theme.textMuted, fontWeight: 500 }}>{label}</span>
+        <span style={{ color: isFake ? theme.alertRed : theme.successGreen, fontWeight: 700 }}>
+          {confidence.toFixed(1)}% ({isFake ? "DEEPFAKE" : "GENUINE"})
+        </span>
       </div>
-      <div style={styles.meter(prob, isFake)}>
-        <div style={styles.meterFill(isFake ? prob : 1 - prob, isFake)} />
+      <div style={{ position: "relative", height: 10, backgroundColor: "#e5e7eb", borderRadius: "4px", overflow: "hidden" }}>
+        <div
+          style={{
+            height: "100%",
+            width: `${Math.min(100, Math.max(0, prob * 100))}%`,
+            backgroundColor: isFake ? theme.huitRed : theme.successGreen,
+            transition: "width 0.35s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.35s ease",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            bottom: 0,
+            left: "50%",
+            width: 2,
+            backgroundColor: "#374151",
+            zIndex: 2,
+          }}
+          title="Ngưỡng phân định EER (50%)"
+        />
       </div>
-      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
-        <span style={{ fontSize: 11, color: "#1D9E75", fontWeight: 600 }}>REAL</span>
-        <span style={{ fontSize: 11, color: "#E24B4A", fontWeight: 600 }}>DEEPFAKE</span>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: theme.textLight, marginTop: 4 }}>
+        <span>0.0 (Xác thực / Real)</span>
+        <span style={{ color: theme.textMuted, fontWeight: 600 }}>Ngưỡng quyết định (50%)</span>
+        <span>1.0 (Giả mạo / Fake)</span>
       </div>
     </div>
   );
 }
 
+// Right Analysis Panel
 function ResultsPanel({ detections, smoothedProb, faceFound, mode }) {
   const isFake = smoothedProb > 0.5;
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "1rem", height: "100%" }}>
-      <div style={{ ...styles.card, flex: 1 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+      {/* Real-time Verdict Card */}
+      <div style={styles.card}>
         <div style={styles.cardHeader}>
-          <span style={styles.cardTitle}><Activity size={16} color="#1D9E75" />Live Analysis</span>
-          {faceFound && <div style={styles.pulse} />}
+          <span style={styles.cardTitle}>Kết quả Phân tích Trực tiếp</span>
+          <span style={styles.cardSubtitle}>
+            {faceFound ? "Đang nhận diện" : "Đang chờ tín hiệu"}
+          </span>
         </div>
         <div style={styles.cardBody}>
           {faceFound ? (
-            <>
-              <div style={{ textAlign: "center", marginBottom: "1.25rem" }}>
-                <div style={{ fontSize: 13, color: "#888", marginBottom: 4 }}>Verdict</div>
-                <div style={{ fontSize: 28, fontWeight: 800, color: isFake ? "#A32D2D" : "#0F6E56" }}>
-                  {isFake ? "DEEPFAKE" : "GENUINE"}
+            <div>
+              {/* Verdict Announcement Box */}
+              <div
+                style={{
+                  padding: "16px",
+                  borderRadius: "6px",
+                  backgroundColor: isFake ? theme.alertBg : theme.successBg,
+                  border: `1px solid ${isFake ? theme.alertBorder : theme.successBorder}`,
+                  textAlign: "center",
+                  marginBottom: 14,
+                  animation: "fadeIn 0.25s ease",
+                }}
+              >
+                <div style={{ fontSize: 11, fontWeight: 700, color: isFake ? theme.alertRed : theme.successGreen, letterSpacing: "0.5px", textTransform: "uppercase" }}>
+                  KẾT LUẬN GIÁM ĐỊNH
+                </div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: isFake ? theme.alertRed : theme.successGreen, margin: "6px 0" }}>
+                  {isFake ? "DEEPFAKE (GIẢ MẠO)" : "GENUINE (XÁC THỰC)"}
+                </div>
+                <div style={{ fontSize: 12, color: theme.textMuted }}>
+                  Độ tin cậy: <strong>{(isFake ? smoothedProb * 100 : (1 - smoothedProb) * 100).toFixed(1)}%</strong> · Xác suất Deepfake: <strong>{(smoothedProb * 100).toFixed(1)}%</strong>
                 </div>
               </div>
-              <ProbabilityMeter prob={smoothedProb} label="Detection confidence" />
-              <div style={{ marginTop: "1rem" }}>
-                {detections.map((d, i) => (
-                  <div key={i} style={styles.statRow}>
-                    <span style={{ fontSize: 13, color: "#5F5E5A" }}>Face #{i + 1}</span>
-                    <span style={styles.pill(d.is_fake)}>{d.is_fake ? "Fake" : "Real"} {d.confidence.toFixed(1)}%</span>
-                  </div>
-                ))}
+
+              {/* Confidence Gauge */}
+              <MetricGauge prob={smoothedProb} label="Xác suất Deepfake Tổng hợp" />
+
+              {/* Detected Faces Table */}
+              <div style={{ marginTop: 16 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: theme.textMuted, textTransform: "uppercase", marginBottom: 6 }}>
+                  Danh sách khuôn mặt trích xuất ({detections.length})
+                </div>
+                <table style={styles.table}>
+                  <thead>
+                    <tr style={{ borderBottom: `1px solid ${theme.border}`, color: theme.textLight }}>
+                      <th style={{ textAlign: "left", padding: "6px 4px" }}>Đối tượng</th>
+                      <th style={{ textAlign: "center", padding: "6px 4px" }}>Trạng thái</th>
+                      <th style={{ textAlign: "right", padding: "6px 4px" }}>Độ tin cậy</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {detections.map((d, i) => (
+                      <tr key={i} style={styles.tableRow}>
+                        <td style={styles.tableKey}>Khuôn mặt #{i + 1}</td>
+                        <td style={{ textAlign: "center", padding: "6px 4px" }}>
+                          <span
+                            style={{
+                              display: "inline-block",
+                              padding: "2px 8px",
+                              borderRadius: "3px",
+                              fontSize: 11,
+                              fontWeight: 700,
+                              backgroundColor: d.is_fake ? theme.alertBg : theme.successBg,
+                              color: d.is_fake ? theme.alertRed : theme.successGreen,
+                              border: `1px solid ${d.is_fake ? theme.alertBorder : theme.successBorder}`,
+                            }}
+                          >
+                            {d.is_fake ? "FAKE" : "REAL"}
+                          </span>
+                        </td>
+                        <td style={styles.tableVal}>{d.confidence.toFixed(1)}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            </>
+            </div>
           ) : (
-            <div style={{ textAlign: "center", padding: "1.5rem 0", color: "#888" }}>
-              <Eye size={32} style={{ opacity: 0.3, marginBottom: 8 }} />
-              <div style={{ fontSize: 13 }}>No face detected</div>
-              <div style={{ fontSize: 11, marginTop: 4 }}>Position face in frame</div>
+            <div style={{ textAlign: "center", padding: "2.5rem 1rem", color: theme.textLight }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: theme.textMuted }}>Chưa phát hiện khuôn mặt</div>
+              <div style={{ fontSize: 12, marginTop: 4 }}>Vui lòng điều chỉnh góc quay hoặc hướng khuôn mặt vào trung tâm</div>
             </div>
           )}
         </div>
       </div>
 
+      {/* Model Specifications Card */}
       <div style={styles.card}>
         <div style={styles.cardHeader}>
-          <span style={styles.cardTitle}><Zap size={16} color="#378ADD" />How it works</span>
+          <span style={styles.cardTitle}>Thông tin Mô hình</span>
         </div>
-        <div style={{ padding: "1rem 1.5rem", display: "flex", flexDirection: "column", gap: 10 }}>
-          {[["Swin Transformer", "Visual artifact detection"], ["rPPG Analysis", "Physiological signal check"], ["Cross-Attention Fusion", "Multi-modal confidence"]].map(([name, desc]) => (
-            <div key={name} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-              <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#1D9E75", marginTop: 5, flexShrink: 0 }} />
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 600, color: "#2c3e50" }}>{name}</div>
-                <div style={{ fontSize: 11, color: "#888" }}>{desc}</div>
-              </div>
-            </div>
-          ))}
+        <div style={styles.cardBody}>
+          <table style={styles.table}>
+            <tbody>
+              <tr style={styles.tableRow}>
+                <td style={styles.tableKey}>Mô hình đề xuất</td>
+                <td style={styles.tableVal}>DeepfakeFusionModel</td>
+              </tr>
+              <tr style={styles.tableRow}>
+                <td style={styles.tableKey}>Nhánh không gian</td>
+                <td style={styles.tableVal}>Swin Transformer-T</td>
+              </tr>
+              <tr style={styles.tableRow}>
+                <td style={styles.tableKey}>Nhánh sinh lý</td>
+                <td style={styles.tableVal}>Remote-PPG (rPPG)</td>
+              </tr>
+              <tr style={styles.tableRow}>
+                <td style={styles.tableKey}>Cơ chế hợp nhất</td>
+                <td style={styles.tableVal}>Cross-Attention Network (CAN)</td>
+              </tr>
+              <tr style={styles.tableRow}>
+                <td style={styles.tableKey}>Ngưỡng tối ưu EER</td>
+                <td style={styles.tableVal}>T = 0.78 (Calibrated)</td>
+              </tr>
+              <tr style={styles.tableRow}>
+                <td style={styles.tableKey}>Tập dữ liệu chuẩn</td>
+                <td style={styles.tableVal}>FaceForensics++ & Celeb-DF</td>
+              </tr>
+              <tr style={styles.tableRow}>
+                <td style={styles.tableKey}>Thiết bị suy luận</td>
+                <td style={styles.tableVal}>CPU (Multi-threaded Worker)</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
   );
 }
 
+// ──────────────────────────────────────────────
+// MODE 1: WEBCAM
+// ──────────────────────────────────────────────
 function WebcamMode() {
   const wsRef = useRef(null);
   const [running, setRunning] = useState(false);
@@ -130,11 +535,12 @@ function WebcamMode() {
   const [fps, setFps] = useState(0);
   const fpsRef = useRef({ count: 0, last: Date.now() });
 
-  const [scanHeight, setScanHeight] = useState(400);
+  const [cameraIndex, setCameraIndex] = useState(0);
+  const [scanHeight, setScanHeight] = useState(440);
   const [isExpanded, setIsExpanded] = useState(false);
 
   const start = useCallback(() => {
-    const ws = new WebSocket(`${API.replace("http", "ws")}/ws/webcam`);
+    const ws = new WebSocket(`${API.replace("http", "ws")}/ws/webcam?camera_index=${cameraIndex}`);
     ws.onmessage = (e) => {
       const data = JSON.parse(e.data);
       if (data.error) { stop(); return; }
@@ -153,7 +559,7 @@ function WebcamMode() {
     ws.onclose = () => { setRunning(false); setFrame(null); };
     wsRef.current = ws;
     setRunning(true);
-  }, []);
+  }, [cameraIndex]);
 
   const stop = useCallback(() => {
     wsRef.current?.close();
@@ -163,71 +569,109 @@ function WebcamMode() {
   useEffect(() => () => wsRef.current?.close(), []);
 
   return (
-    <div style={{ ...styles.grid, gridTemplateColumns: isExpanded ? "1fr" : "1fr 360px" }}>
+    <div className="tab-content" style={{ ...styles.grid, gridTemplateColumns: isExpanded ? "1fr" : "1fr 400px" }}>
       <div style={styles.card}>
         <div style={styles.cardHeader}>
-          <span style={styles.cardTitle}><Camera size={16} color="#1D9E75" />Webcam Feed</span>
-          {running && <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 11, color: "#1D9E75", fontWeight: 600 }}>{fps} FPS</span>
-            <div style={styles.pulse} />
-          </div>}
+          <span style={styles.cardTitle}>Luồng Giám sát Webcam</span>
+          <span style={styles.cardSubtitle}>
+            {running ? `Đang phát · ${fps} FPS` : "Chưa kích hoạt"}
+          </span>
         </div>
         <div style={styles.cardBody}>
-          <div style={{ display: "flex", gap: "1rem", alignItems: "stretch" }}>
-            {/* Khu vực Video */}
-            <div style={{ ...styles.videoBox, height: scanHeight, flex: 1, aspectRatio: "auto" }}>
-              {frame ? <img src={frame} alt="live" style={{ width: "100%", height: "100%", objectFit: "contain" }} /> :
-                <div style={styles.placeholder}>
-                  <Camera size={48} />
-                  <div style={{ fontSize: 14 }}>Camera preview will appear here</div>
-                </div>}
+          <div style={{ display: "flex", gap: "10px", alignItems: "stretch" }}>
+            {/* Video Canvas */}
+            <div style={{ ...styles.videoFrame, height: scanHeight, flex: 1 }}>
+              {!frame && <div className="scan-line" />}
+              {frame ? (
+                <>
+                  <img src={frame} alt="Webcam Feed" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                  <div style={{ position: "absolute", top: 10, left: 10, right: 10, display: "flex", justifyContent: "space-between", pointerEvents: "none" }}>
+                    <div style={styles.hudBadge}>
+                      Camera: {cameraIndex === 0 ? "Webcam Tích hợp (0)" : "OBS Virtual Camera (1)"}
+                    </div>
+                    <div style={styles.hudBadge}>
+                      Tốc độ: {fps} FPS
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div style={{ textAlign: "center", color: "#9ca3af" }}>
+                  <div style={{ width: 52, height: 52, borderRadius: "50%", backgroundColor: "rgba(0, 59, 113, 0.25)", border: "1px solid rgba(0, 91, 170, 0.4)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>
+                    <Camera size={24} color="#38bdf8" />
+                  </div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "#f3f4f6" }}>Sẵn sàng kết nối Camera</div>
+                  <div style={{ fontSize: 12, marginTop: 4, color: "#9ca3af" }}>Chọn thiết bị đầu vào bên dưới và nhấn Bắt đầu giám sát</div>
+                </div>
+              )}
             </div>
 
-            {/* Thanh slider nằm dọc bên cạnh video */}
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between", background: "rgba(29,158,117,0.05)", padding: "15px 10px", borderRadius: "12px" }}>
-              <SlidersHorizontal size={16} color="#1D9E75" style={{ transform: "rotate(90deg)" }} />
-              <input 
-                type="range" 
-                min="250" 
-                max="800" 
-                step="10" 
-                value={scanHeight} 
-                onChange={e => setScanHeight(Number(e.target.value))} 
+            {/* Height Slider */}
+            <div style={styles.sliderContainer}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: theme.textMuted }}>H</span>
+              <input
+                type="range"
+                min="250"
+                max="800"
+                step="10"
+                value={scanHeight}
+                onChange={e => setScanHeight(Number(e.target.value))}
                 orient="vertical"
-                style={{ 
-                  WebkitAppearance: "slider-vertical", 
+                style={{
+                  WebkitAppearance: "slider-vertical",
                   appearance: "slider-vertical",
-                  width: 8, 
+                  width: 8,
                   flex: 1,
-                  margin: "15px 0",
-                  cursor: "pointer", 
-                  accentColor: "#1D9E75" 
-                }} 
+                  margin: "10px 0",
+                  cursor: "pointer",
+                }}
               />
-              <span style={{ fontSize: 12, color: "#888", fontWeight: 600 }}>{scanHeight}</span>
+              <span style={{ fontSize: 10, fontWeight: 600, color: theme.textMuted }}>{scanHeight}</span>
             </div>
           </div>
 
-          <div style={{ marginTop: "1.25rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <button style={{ ...styles.btn("outline"), padding: "6px 12px", fontSize: 12 }} onClick={() => setIsExpanded(!isExpanded)}>
+          {/* Action Toolbar */}
+          <div style={{ marginTop: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <button style={styles.btnOutline} onClick={() => setIsExpanded(!isExpanded)}>
               {isExpanded ? <><Minimize size={14} /> Thu gọn</> : <><Maximize size={14} /> Mở rộng</>}
             </button>
-            <div style={{ display: "flex", gap: 10 }}>
-              {!running ? <button style={styles.btn("primary")} onClick={start}><Play size={16} />Start Camera</button> :
-                <button style={styles.btn("danger")} onClick={stop}><Square size={14} />Stop</button>}
+
+            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+              <select
+                value={cameraIndex}
+                onChange={e => setCameraIndex(Number(e.target.value))}
+                disabled={running}
+                style={{ ...styles.select, opacity: running ? 0.6 : 1 }}
+              >
+                <option value={0}>Camera 0: Webcam Laptop (Mặc định)</option>
+                <option value={1}>Camera 1: OBS Virtual Camera (Phát giả lập)</option>
+              </select>
+
+              {!running ? (
+                <button style={styles.btnPrimary} onClick={start}>
+                  <Play size={14} /> Bắt đầu giám sát
+                </button>
+              ) : (
+                <button style={styles.btnDanger} onClick={stop}>
+                  <Square size={14} /> Dừng giám sát
+                </button>
+              )}
             </div>
           </div>
         </div>
       </div>
+
       <ResultsPanel detections={detections} smoothedProb={smoothedProb} faceFound={faceFound} mode="webcam" />
     </div>
   );
 }
 
+// ──────────────────────────────────────────────
+// MODE 2: WINDOW CAPTURE
+// ──────────────────────────────────────────────
 function WindowMode() {
   const wsRef = useRef(null);
   const [windows, setWindows] = useState([]);
-  const [selected, setSelected] = useState("");
+  const [selectedId, setSelectedId] = useState("");
   const [running, setRunning] = useState(false);
   const [frame, setFrame] = useState(null);
   const [detections, setDetections] = useState([]);
@@ -236,112 +680,263 @@ function WindowMode() {
   const [fps, setFps] = useState(0);
   const fpsRef = useRef({ count: 0, last: Date.now() });
 
-  const [scanHeight, setScanHeight] = useState(400);
+  const [scanHeight, setScanHeight] = useState(440);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [warningMsg, setWarningMsg] = useState("");
+
+  const getTargetWin = (id = selectedId) => {
+    return windows.find(w => String(w.id ?? w) === String(id)) || null;
+  };
 
   const fetchWindows = async () => {
-    try { const r = await fetch(`${API}/api/windows`); const d = await r.json(); setWindows(d.windows || []); if (d.windows?.length) setSelected(d.windows[0]); } catch {}
+    try {
+      const r = await fetch(`${API}/api/windows`);
+      const d = await r.json();
+      const list = d.windows || [];
+      setWindows(list);
+      // Giữ nguyên cửa sổ người dùng đã chọn nếu còn tồn tại, tránh bị reset khi tải lại
+      setSelectedId(prev => {
+        if (!list.length) return "";
+        const exists = list.some(w => String(w.id ?? w) === String(prev));
+        if (exists) return prev;
+        return String(list[0].id ?? list[0]);
+      });
+    } catch {}
   };
 
   useEffect(() => { fetchWindows(); }, []);
 
+  // Xử lý đổi cửa sổ ngay lập tức khi người dùng click dropdown
+  const handleSelectWindow = (newId) => {
+    setSelectedId(newId);
+    setErrorMsg("");
+    setWarningMsg("");
+
+    // Nếu đang quét, gửi lệnh switch_window qua WebSocket ngay lập tức không cần dừng
+    if (running && wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      const target = getTargetWin(newId);
+      const winId = target?.id ?? (isNaN(Number(newId)) ? null : Number(newId));
+      const winTitle = target?.title ?? newId;
+      wsRef.current.send(JSON.stringify({
+        action: "switch_window",
+        window_id: winId,
+        window_title: winTitle
+      }));
+    }
+  };
+
+  // Kích hoạt đưa cửa sổ mục tiêu lên phía trước màn hình
+  const activateWindow = async () => {
+    const target = getTargetWin();
+    if (!target && !selectedId) return;
+    try {
+      await fetch(`${API}/api/windows/activate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          window_id: target?.id ?? null,
+          window_title: target?.title ?? selectedId
+        })
+      });
+    } catch (e) {
+      console.error("Activate window error:", e);
+    }
+  };
+
   const start = useCallback(() => {
-    if (!selected) return;
+    const target = getTargetWin();
+    if (!target && !selectedId) return;
+    setErrorMsg("");
+    setWarningMsg("");
+
     const ws = new WebSocket(`${API.replace("http", "ws")}/ws/window`);
-    ws.onopen = () => ws.send(JSON.stringify({ window_title: selected }));
+    const winId = target?.id ?? (isNaN(Number(selectedId)) ? null : Number(selectedId));
+    const winTitle = target?.title ?? selectedId;
+
+    ws.onopen = () => {
+      ws.send(JSON.stringify({
+        window_id: winId,
+        window_title: winTitle
+      }));
+    };
+
     ws.onmessage = (e) => {
       const data = JSON.parse(e.data);
-      if (data.error) { stop(); return; }
-      setFrame(`data:image/jpeg;base64,${data.frame}`);
+      if (data.error) {
+        setErrorMsg(data.error);
+        stop();
+        return;
+      }
+      if (data.warning) {
+        setWarningMsg(data.warning);
+        return;
+      } else {
+        setWarningMsg("");
+      }
+      if (data.frame) {
+        setFrame(`data:image/jpeg;base64,${data.frame}`);
+      }
       setDetections(data.detections || []);
       setSmoothedProb(data.smoothed_prob ?? 0.5);
       setFaceFound(data.face_found ?? false);
       fpsRef.current.count++;
       const now = Date.now();
-      if (now - fpsRef.current.last >= 1000) { setFps(fpsRef.current.count); fpsRef.current = { count: 0, last: now }; }
+      if (now - fpsRef.current.last >= 1000) {
+        setFps(fpsRef.current.count);
+        fpsRef.current = { count: 0, last: now };
+      }
     };
-    ws.onerror = () => stop();
+    ws.onerror = () => { setErrorMsg("Lỗi kết nối WebSocket"); stop(); };
     ws.onclose = () => { setRunning(false); setFrame(null); };
     wsRef.current = ws;
     setRunning(true);
-  }, [selected]);
+  }, [selectedId, windows]);
 
   const stop = useCallback(() => {
     wsRef.current?.close();
     setRunning(false); setFrame(null); setFaceFound(false); setDetections([]); setFps(0);
+    setWarningMsg("");
   }, []);
 
   useEffect(() => () => wsRef.current?.close(), []);
 
+  const activeTitle = getTargetWin()?.title || (selectedId ? String(selectedId) : "Chưa chọn cửa sổ");
+
   return (
-    <div style={{ ...styles.grid, gridTemplateColumns: isExpanded ? "1fr" : "1fr 360px" }}>
+    <div className="tab-content" style={{ ...styles.grid, gridTemplateColumns: isExpanded ? "1fr" : "1fr 400px" }}>
       <div style={styles.card}>
         <div style={styles.cardHeader}>
-          <span style={styles.cardTitle}><Monitor size={16} color="#378ADD" />Window Capture</span>
-          {running && <span style={{ fontSize: 11, color: "#1D9E75", fontWeight: 600 }}>{fps} FPS</span>}
+          <span style={styles.cardTitle}>Quét Cửa sổ Ứng dụng</span>
+          <span style={styles.cardSubtitle}>
+            {running ? `Đang quét · ${fps} FPS` : "Sẵn sàng"}
+          </span>
         </div>
         <div style={styles.cardBody}>
-          <div style={{ display: "flex", gap: "1rem", alignItems: "stretch" }}>
-            {/* Khu vực Video */}
-            <div style={{ ...styles.videoBox, height: scanHeight, flex: 1, aspectRatio: "auto" }}>
-              {frame ? <img src={frame} alt="window" style={{ width: "100%", height: "100%", objectFit: "contain" }} /> :
-                <div style={styles.placeholder}><Monitor size={48} /><div style={{ fontSize: 14 }}>Select a window and start scanning</div></div>}
+          <div style={{ display: "flex", gap: "10px", alignItems: "stretch" }}>
+            <div style={{ ...styles.videoFrame, height: scanHeight, flex: 1 }}>
+              {!frame && <div className="scan-line" />}
+              {frame ? (
+                <>
+                  <img src={frame} alt="Window Capture" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                  <div style={{ position: "absolute", top: 10, left: 10, right: 10, display: "flex", justifyContent: "space-between", pointerEvents: "none" }}>
+                    <div style={styles.hudBadge}>
+                      Mục tiêu: {activeTitle.length > 32 ? activeTitle.substring(0, 32) + "..." : activeTitle}
+                    </div>
+                    <div style={styles.hudBadge}>
+                      Tốc độ: {fps} FPS
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div style={{ textAlign: "center", color: "#9ca3af" }}>
+                  <div style={{ width: 52, height: 52, borderRadius: "50%", backgroundColor: "rgba(0, 59, 113, 0.25)", border: "1px solid rgba(0, 91, 170, 0.4)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>
+                    <Monitor size={24} color="#38bdf8" />
+                  </div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "#f3f4f6" }}>
+                    {warningMsg || (running ? "Đang kết nối tới cửa sổ..." : "Chưa quét cửa sổ nào")}
+                  </div>
+                  <div style={{ fontSize: 12, marginTop: 4, color: "#9ca3af" }}>
+                    {running ? "Đang nhận luồng khung hình từ cửa sổ mục tiêu" : "Chọn ứng dụng (VLC, Chrome, Zoom) và bấm Bắt đầu quét"}
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Thanh slider nằm dọc bên cạnh video */}
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between", background: "rgba(29,158,117,0.05)", padding: "15px 10px", borderRadius: "12px" }}>
-              <SlidersHorizontal size={16} color="#1D9E75" style={{ transform: "rotate(90deg)" }} />
-              <input 
-                type="range" 
-                min="250" 
-                max="800" 
-                step="10" 
-                value={scanHeight} 
-                onChange={e => setScanHeight(Number(e.target.value))} 
+            <div style={styles.sliderContainer}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: theme.textMuted }}>H</span>
+              <input
+                type="range"
+                min="250"
+                max="800"
+                step="10"
+                value={scanHeight}
+                onChange={e => setScanHeight(Number(e.target.value))}
                 orient="vertical"
-                style={{ 
-                  WebkitAppearance: "slider-vertical", 
+                style={{
+                  WebkitAppearance: "slider-vertical",
                   appearance: "slider-vertical",
-                  width: 8, 
+                  width: 8,
                   flex: 1,
-                  margin: "15px 0",
-                  cursor: "pointer", 
-                  accentColor: "#1D9E75" 
-                }} 
+                  margin: "10px 0",
+                  cursor: "pointer",
+                }}
               />
-              <span style={{ fontSize: 12, color: "#888", fontWeight: 600 }}>{scanHeight}</span>
+              <span style={{ fontSize: 10, fontWeight: 600, color: theme.textMuted }}>{scanHeight}</span>
             </div>
           </div>
 
-          <div style={{ marginTop: "1.25rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: "1rem" }}>
+          <div style={{ marginTop: "16px", display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: "#5F5E5A", marginBottom: 8 }}>Target Window</div>
-                <div style={{ position: "relative" }}>
-                  <select value={selected} onChange={e => setSelected(e.target.value)} style={styles.select} disabled={running}>
-                    {windows.length === 0 ? <option>No windows found</option> : windows.map(w => <option key={w}>{w}</option>)}
-                  </select>
-                  <ChevronDown size={14} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "#888", pointerEvents: "none" }} />
-                </div>
+                <select
+                  value={selectedId}
+                  onChange={e => handleSelectWindow(e.target.value)}
+                  style={{ ...styles.select, width: "100%", cursor: "pointer" }}
+                  title={running ? "Chọn để đổi cửa sổ quét ngay lập tức" : "Chọn cửa sổ để quét"}
+                >
+                  {windows.length === 0 ? (
+                    <option value="">Không tìm thấy cửa sổ nào</option>
+                  ) : (
+                    windows.map(w => {
+                      const id = String(w.id ?? w);
+                      const title = w.title ?? w;
+                      const prefix = w.is_minimized ? "[Thu nhỏ] " : "";
+                      return <option key={id} value={id}>{prefix}{title}</option>;
+                    })
+                  )}
+                </select>
               </div>
-              <button style={{ ...styles.btn("outline"), padding: "0 12px", fontSize: 12, height: "39px" }} onClick={() => setIsExpanded(!isExpanded)}>
-                {isExpanded ? <><Minimize size={14} /> Thu gọn</> : <><Maximize size={14} /> Mở rộng</>}
+
+              <button
+                style={styles.btnOutline}
+                onClick={activateWindow}
+                title="Hiển thị và đưa cửa sổ đã chọn lên phía trước màn hình"
+              >
+                <ExternalLink size={14} /> Mở cửa sổ
               </button>
+
+              <button style={styles.btnOutline} onClick={fetchWindows} title="Làm mới danh sách cửa sổ">
+                <RefreshCw size={14} /> Tải lại
+              </button>
+
+              <button style={styles.btnOutline} onClick={() => setIsExpanded(!isExpanded)}>
+                {isExpanded ? <Minimize size={14} /> : <Maximize size={14} />}
+              </button>
+
+              {!running ? (
+                <button style={styles.btnPrimary} onClick={start} disabled={!selectedId}>
+                  <Play size={14} /> Bắt đầu quét
+                </button>
+              ) : (
+                <button style={styles.btnDanger} onClick={stop}>
+                  <Square size={14} /> Dừng quét
+                </button>
+              )}
             </div>
 
-            <div style={{ display: "flex", gap: 10 }}>
-              {!running ? <button style={styles.btn("primary")} onClick={start} disabled={!selected}><Play size={16} />Start Scan</button> :
-                <button style={styles.btn("danger")} onClick={stop}><Square size={14} />Stop</button>}
-              <button style={styles.btn("outline")} onClick={fetchWindows}><RefreshCw size={14} />Refresh</button>
-            </div>
+            {errorMsg && (
+              <div style={{ padding: "8px 12px", backgroundColor: theme.alertBg, border: `1px solid ${theme.alertBorder}`, color: theme.alertRed, fontSize: 12, borderRadius: "5px" }}>
+                Lỗi: {errorMsg}
+              </div>
+            )}
+            {warningMsg && !errorMsg && (
+              <div style={{ padding: "8px 12px", backgroundColor: "#fffbeb", border: "1px solid #fef3c7", color: "#b45309", fontSize: 12, borderRadius: "5px" }}>
+                ℹ️ {warningMsg}
+              </div>
+            )}
           </div>
         </div>
       </div>
+
       <ResultsPanel detections={detections} smoothedProb={smoothedProb} faceFound={faceFound} mode="window" />
     </div>
   );
 }
 
+// ──────────────────────────────────────────────
+// MODE 3: VIDEO FILE ANALYSIS
+// ──────────────────────────────────────────────
 function VideoMode() {
   const [dragging, setDragging] = useState(false);
   const [file, setFile] = useState(null);
@@ -358,21 +953,21 @@ function VideoMode() {
 
   const analyze = async (f) => {
     setAnalyzing(true); setResult(null); setError(null); setProgress(0);
-    const interval = setInterval(() => setProgress(p => Math.min(p + 2, 90)), 300);
+    const interval = setInterval(() => setProgress(p => Math.min(p + 5, 92)), 180);
     try {
       const fd = new FormData(); fd.append("file", f);
       const r = await fetch(`${API}/api/analyze-video`, { method: "POST", body: fd });
       const d = await r.json();
       if (d.error) setError(d.error); else setResult(d);
-    } catch (e) { setError("Failed to connect to backend."); }
+    } catch (e) { setError("Không thể kết nối đến máy chủ backend."); }
     clearInterval(interval); setProgress(100); setAnalyzing(false);
   };
 
-  const handleFile = (f) => { 
-    if (!f) return; 
-    setFile(f); 
-    setResult(null); 
-    setError(null); 
+  const handleFile = (f) => {
+    if (!f) return;
+    setFile(f);
+    setResult(null);
+    setError(null);
     if (videoUrl) URL.revokeObjectURL(videoUrl);
     setVideoUrl(URL.createObjectURL(f));
   };
@@ -380,112 +975,155 @@ function VideoMode() {
   const onDrop = (e) => { e.preventDefault(); setDragging(false); handleFile(e.dataTransfer.files[0]); };
 
   return (
-    <div style={{ ...styles.grid, gridTemplateColumns: "1fr 360px" }}>
+    <div className="tab-content" style={{ ...styles.grid, gridTemplateColumns: "1fr 400px" }}>
       <div style={styles.card}>
         <div style={styles.cardHeader}>
-          <span style={styles.cardTitle}><Film size={16} color="#639922" />Video Analysis</span>
+          <span style={styles.cardTitle}>Phân tích Tệp tin Video Ngoại tuyến</span>
+          <span style={styles.cardSubtitle}>
+            {analyzing ? `Đang xử lý (${progress}%)` : "Sẵn sàng"}
+          </span>
         </div>
         <div style={styles.cardBody}>
-          <div style={styles.uploadZone(dragging)} onClick={() => inputRef.current?.click()}
+          {/* Upload Dropzone */}
+          <div
+            onClick={() => inputRef.current?.click()}
             onDragOver={e => { e.preventDefault(); setDragging(true); }}
-            onDragLeave={() => setDragging(false)} onDrop={onDrop}>
+            onDragLeave={() => setDragging(false)}
+            onDrop={onDrop}
+            style={{
+              border: `2px dashed ${dragging ? theme.huitNavy : "#9ca3af"}`,
+              backgroundColor: dragging ? "#eff6ff" : "rgba(249, 250, 251, 0.7)",
+              borderRadius: "6px",
+              padding: "2.5rem 1rem",
+              textAlign: "center",
+              cursor: "pointer",
+              transition: "all 0.2s ease",
+            }}
+          >
             <input ref={inputRef} type="file" accept="video/*" style={{ display: "none" }} onChange={e => handleFile(e.target.files[0])} />
-            <div style={{ width: 56, height: 56, borderRadius: 16, background: "linear-gradient(135deg, #E1F5EE, #E6F1FB)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Upload size={24} color="#1D9E75" />
+            <Upload size={34} color={theme.huitNavy} style={{ margin: "0 auto 10px" }} />
+            <div style={{ fontSize: 14, fontWeight: 600, color: theme.textDark }}>
+              Kéo thả tệp video vào đây hoặc nhấn để duyệt tệp
             </div>
-            <div>
-              <div style={{ fontSize: 15, fontWeight: 600, color: "#2c3e50", textAlign: "center" }}>Drop video file here</div>
-              <div style={{ fontSize: 13, color: "#888", textAlign: "center", marginTop: 4 }}>or click to browse — MP4, MOV, AVI</div>
+            <div style={{ fontSize: 12, color: theme.textMuted, marginTop: 4 }}>
+              Hỗ trợ định dạng MP4, AVI, MOV, MKV
             </div>
           </div>
 
+          {/* Video Player Preview */}
           {videoUrl && (
-            <div style={{ marginTop: "1.5rem", borderRadius: 16, overflow: "hidden", background: "#000", boxShadow: "0 8px 24px rgba(29,158,117,0.15)", border: "1px solid rgba(29,158,117,0.2)" }}>
-              <video src={videoUrl} controls autoPlay muted style={{ width: "100%", maxHeight: 400, display: "block" }} />
+            <div style={{ marginTop: 14, backgroundColor: "#000", borderRadius: "6px", overflow: "hidden", border: `1px solid ${theme.border}` }}>
+              <video src={videoUrl} controls autoPlay muted style={{ width: "100%", maxHeight: 360, display: "block" }} />
             </div>
           )}
 
+          {/* Selected File Details Bar */}
           {file && (
-            <div style={{ marginTop: "1rem", padding: "12px 16px", background: "#E6F1FB", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <Film size={16} color="#185FA5" />
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "#2c3e50" }}>{file.name}</div>
-                  <div style={{ fontSize: 11, color: "#888" }}>{(file.size / 1024 / 1024).toFixed(2)} MB</div>
-                </div>
+            <div style={{ marginTop: 14, padding: "12px 16px", backgroundColor: "rgba(243, 244, 246, 0.85)", border: `1px solid ${theme.border}`, borderRadius: "6px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div>
+                <span style={{ fontSize: 13, fontWeight: 600, color: theme.textDark }}>{file.name}</span>
+                <span style={{ fontSize: 12, color: theme.textMuted, marginLeft: 8 }}>({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
               </div>
-              <button style={styles.btn("primary")} onClick={() => analyze(file)} disabled={analyzing}>
+              <button style={styles.btnPrimary} onClick={() => analyze(file)} disabled={analyzing}>
                 {analyzing ? <RefreshCw size={14} style={{ animation: "spin 1s linear infinite" }} /> : <Play size={14} />}
-                {analyzing ? "Analyzing..." : "Analyze"}
+                {analyzing ? "Đang xử lý..." : "Khởi chạy phân tích"}
               </button>
             </div>
           )}
 
+          {/* Progress bar */}
           {analyzing && (
-            <div style={{ marginTop: "1rem" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: "#5F5E5A" }}>Processing frames...</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: "#1D9E75" }}>{progress}%</span>
+            <div style={{ marginTop: 14 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: theme.textMuted, marginBottom: 5 }}>
+                <span>Đang trích xuất và phân tích khung hình tuần tự...</span>
+                <span style={{ fontWeight: 600, color: theme.huitNavy }}>{progress}%</span>
               </div>
-              <div style={{ height: 6, background: "#E1F5EE", borderRadius: 3, overflow: "hidden" }}>
-                <div style={{ height: "100%", width: `${progress}%`, background: "linear-gradient(90deg, #1D9E75, #378ADD)", borderRadius: 3, transition: "width 0.3s" }} />
+              <div style={{ height: 6, backgroundColor: "#e5e7eb", borderRadius: "3px", overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${progress}%`, backgroundColor: theme.huitNavy, transition: "width 0.2s linear" }} />
               </div>
             </div>
           )}
 
           {error && (
-            <div style={{ marginTop: "1rem", padding: "12px 16px", background: "#FCEBEB", borderRadius: 12, display: "flex", gap: 10, alignItems: "center" }}>
-              <AlertCircle size={16} color="#A32D2D" /><span style={{ fontSize: 13, color: "#A32D2D" }}>{error}</span>
-            </div>
-          )}
-
-          {result && (
-            <div style={{ marginTop: "1.25rem" }}>
-              <div style={{ padding: "1.25rem", borderRadius: 16, background: result.verdict === "DEEPFAKE" ? "#FCEBEB" : "#E1F5EE", border: `1.5px solid ${result.verdict === "DEEPFAKE" ? "#F7C1C1" : "#9FE1CB"}`, marginBottom: "1rem" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  {result.verdict === "DEEPFAKE" ? <AlertCircle size={28} color="#A32D2D" /> : <CheckCircle size={28} color="#0F6E56" />}
-                  <div>
-                    <div style={{ fontSize: 22, fontWeight: 800, color: result.verdict === "DEEPFAKE" ? "#A32D2D" : "#0F6E56" }}>{result.verdict}</div>
-                    <div style={{ fontSize: 13, color: "#888" }}>Confidence: {result.confidence}%</div>
-                  </div>
-                </div>
-              </div>
-              <ProbabilityMeter prob={result.average_probability} label="Average deepfake probability" />
-              <div style={{ marginTop: "1rem" }}>
-                {[["Frames analyzed", result.total_frames_analyzed], ["Avg probability", `${(result.average_probability * 100).toFixed(1)}%`]].map(([k, v]) => (
-                  <div key={k} style={styles.statRow}><span style={{ fontSize: 13, color: "#5F5E5A" }}>{k}</span><span style={{ fontSize: 13, fontWeight: 600, color: "#2c3e50" }}>{v}</span></div>
-                ))}
-              </div>
+            <div style={{ marginTop: 14, padding: "10px 14px", backgroundColor: theme.alertBg, border: `1px solid ${theme.alertBorder}`, color: theme.alertRed, fontSize: 12, borderRadius: "5px" }}>
+              Lỗi: {error}
             </div>
           )}
         </div>
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      {/* Right Column: File Analysis Results */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
         <div style={styles.card}>
-          <div style={styles.cardHeader}><span style={styles.cardTitle}><Activity size={16} color="#639922" />Analysis Info</span></div>
-          <div style={{ padding: "1rem 1.5rem" }}>
-            <div style={{ fontSize: 13, color: "#5F5E5A", lineHeight: 1.8 }}>
-              The video is sampled at up to <strong>120 frames</strong>, evenly spaced. Each frame is analyzed with the Swin Transformer + rPPG fusion model. Results are aggregated for a final verdict.
-            </div>
-            <div style={{ marginTop: "1rem", display: "flex", flexDirection: "column", gap: 8 }}>
-              {[["Max frames sampled", "120"], ["Face detection", "MediaPipe"], ["Model", "Swin + rPPG Fusion"]].map(([k, v]) => (
-                <div key={k} style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ fontSize: 12, color: "#888" }}>{k}</span>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: "#2c3e50" }}>{v}</span>
+          <div style={styles.cardHeader}>
+            <span style={styles.cardTitle}>Báo cáo Giám định Tệp tin</span>
+          </div>
+          <div style={styles.cardBody}>
+            {result ? (
+              <div>
+                <div
+                  style={{
+                    padding: "16px",
+                    borderRadius: "6px",
+                    backgroundColor: result.verdict === "DEEPFAKE" ? theme.alertBg : theme.successBg,
+                    border: `1px solid ${result.verdict === "DEEPFAKE" ? theme.alertBorder : theme.successBorder}`,
+                    textAlign: "center",
+                    marginBottom: 14,
+                    animation: "fadeIn 0.25s ease",
+                  }}
+                >
+                  <div style={{ fontSize: 11, fontWeight: 700, color: result.verdict === "DEEPFAKE" ? theme.alertRed : theme.successGreen, letterSpacing: "0.5px" }}>
+                    KẾT LUẬN GIÁM ĐỊNH
+                  </div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: result.verdict === "DEEPFAKE" ? theme.alertRed : theme.successGreen, margin: "6px 0" }}>
+                    {result.verdict === "DEEPFAKE" ? "DEEPFAKE (GIẢ MẠO)" : "GENUINE (XÁC THỰC)"}
+                  </div>
+                  <div style={{ fontSize: 12, color: theme.textMuted }}>
+                    Độ tin cậy: <strong>{result.confidence}%</strong> · Xác suất trung bình: <strong>{(result.average_probability * 100).toFixed(1)}%</strong>
+                  </div>
                 </div>
-              ))}
-            </div>
+
+                <MetricGauge prob={result.average_probability} label="Xác suất Deepfake trung bình video" />
+
+                <table style={{ ...styles.table, marginTop: 14 }}>
+                  <tbody>
+                    <tr style={styles.tableRow}>
+                      <td style={styles.tableKey}>Khung hình phân tích</td>
+                      <td style={styles.tableVal}>{result.total_frames_analyzed} frames</td>
+                    </tr>
+                    <tr style={styles.tableRow}>
+                      <td style={styles.tableKey}>Xác suất Deepfake trung bình</td>
+                      <td style={styles.tableVal}>{(result.average_probability * 100).toFixed(2)}%</td>
+                    </tr>
+                    <tr style={styles.tableRow}>
+                      <td style={styles.tableKey}>Ngưỡng quyết định EER</td>
+                      <td style={styles.tableVal}>T = 0.78 (Calibrated)</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div style={{ textAlign: "center", padding: "2.5rem 1rem", color: theme.textLight }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: theme.textMuted }}>Chưa có kết quả giám định</div>
+                <div style={{ fontSize: 12, marginTop: 4 }}>Tải tệp video lên và bấm Khởi chạy phân tích để xem kết quả</div>
+              </div>
+            )}
           </div>
         </div>
+
         <div style={styles.card}>
-          <div style={styles.cardHeader}><span style={styles.cardTitle}><Zap size={16} color="#378ADD" />Tips</span></div>
-          <div style={{ padding: "1rem 1.5rem", display: "flex", flexDirection: "column", gap: 10 }}>
-            {["Videos with clear, well-lit faces produce most accurate results.", "Longer videos give more data points for reliable analysis.", "Supports MP4, MOV, AVI, and most common formats."].map((t, i) => (
-              <div key={i} style={{ display: "flex", gap: 10, fontSize: 12, color: "#5F5E5A", lineHeight: 1.6 }}>
-                <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#378ADD", marginTop: 5, flexShrink: 0 }} />{t}
-              </div>
-            ))}
+          <div style={styles.cardHeader}>
+            <span style={styles.cardTitle}>Phương pháp luận (Methodology)</span>
+          </div>
+          <div style={styles.cardBody}>
+            <div style={{ fontSize: 12, color: theme.textMuted, lineHeight: 1.7 }}>
+              Theo đề cương nghiên cứu <strong>CNTT-KLCN174</strong>, mô hình <strong>DeepfakeFusionModel</strong> khai thác đồng thời 2 nguồn đặc trưng độc lập:
+            </div>
+            <ul style={{ fontSize: 12, color: theme.textMuted, marginTop: 8, paddingLeft: 18, lineHeight: 1.8 }}>
+              <li><strong>Nhánh không gian (Swin Transformer):</strong> Trích xuất đặc trưng thị giác vi mô (texture, blending artifact).</li>
+              <li><strong>Nhánh sinh lý (rPPG):</strong> Ước lượng biến thiên chu kỳ tim mạch từ biến đổi màu sắc mao mạch da mặt qua các khung hình liên tiếp.</li>
+              <li><strong>Hợp nhất Cross-Attention (CAN):</strong> Tự động học mối liên hệ Query-Key-Value giữa 2 nguồn đặc trưng để phân loại nhị phân Real/Fake.</li>
+            </ul>
           </div>
         </div>
       </div>
@@ -493,69 +1131,64 @@ function VideoMode() {
   );
 }
 
+// ──────────────────────────────────────────────
+// ROOT APPLICATION
+// ──────────────────────────────────────────────
 export default function App() {
   const [tab, setTab] = useState("webcam");
   const [health, setHealth] = useState(null);
 
   useEffect(() => {
-    fetch(`${API}/api/health`).then(r => r.json()).then(setHealth).catch(() => setHealth({ status: "error" }));
+    fetch(`${API}/api/health`)
+      .then(r => r.json())
+      .then(setHealth)
+      .catch(() => setHealth({ status: "error" }));
   }, []);
 
   const tabs = [
-    { id: "webcam", icon: Camera, label: "Webcam" },
-    { id: "window", icon: Monitor, label: "Window Capture" },
-    { id: "video", icon: Film, label: "Video File" },
+    { id: "webcam", icon: Camera, label: "GIÁM SÁT WEBCAM TRỰC TIẾP" },
+    { id: "window", icon: Monitor, label: "QUÉT CỬA SỔ ỨNG DỤNG" },
+    { id: "video", icon: Film, label: "PHÂN TÍCH TỆP TIN VIDEO" },
   ];
 
   return (
-    <div style={styles.app}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
-        button:not(:disabled):hover { filter: brightness(1.08); }
-        @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.3)} }
-        @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
-        select:focus, input:focus { outline: 2px solid rgba(29,158,117,0.4); outline-offset: 1px; }
-      `}</style>
-
+    <div style={styles.appWrapper}>
+      {/* Official University Header */}
       <header style={styles.header}>
         <div style={styles.headerInner}>
-          <div style={styles.logo}>
-            <div style={styles.logoIcon}><Eye size={20} color="white" /></div>
-            <span style={styles.logoText}>HUIT Deepfake Scanner</span>
-            <span style={{ fontSize: 11, padding: "2px 8px", background: "#E1F5EE", color: "#0F6E56", borderRadius: 6, fontWeight: 600 }}>v2.0</span>
+          <div style={styles.brandGroup}>
+            <img src="/huit-logo.png" alt="Logo HUIT" style={styles.logoImg} />
+            <div>
+              <div style={styles.instTitle}>TRƯỜNG ĐẠI HỌC CÔNG THƯƠNG TP. HỒ CHÍ MINH · HUIT</div>
+              <div style={styles.deptTitle}>KHOA CÔNG NGHỆ THÔNG TIN</div>
+              <div style={styles.headerTitle}>HỆ THỐNG PHÁT HIỆN DEEPFAKE KẾT HỢP ĐẶC TRƯNG KHÔNG GIAN VÀ rPPG (CNTT-KLCN174)</div>
+            </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+
+          <div style={styles.statusGroup}>
             {health && (
-              <div style={styles.badge(health.status === "ok")}>
-                {health.status === "ok" ? <Wifi size={12} /> : <WifiOff size={12} />}
-                {health.status === "ok" ? `Backend ready · ${health.device?.toUpperCase()}` : "Backend offline"}
+              <div style={styles.statusPill(health.status === "ok")}>
+                <span style={{ width: 7, height: 7, borderRadius: "50%", backgroundColor: health.status === "ok" ? "#059669" : "#dc2626" }} />
+                <span>Backend: {health.status === "ok" ? `Sẵn sàng (${health.device?.toUpperCase()})` : "Ngoại tuyến"}</span>
               </div>
             )}
-            {health?.model_loaded === false && (
-              <div style={{ ...styles.badge(false), background: "#FAEEDA", color: "#854F0B", border: "1px solid #FAC775" }}>
-                <AlertCircle size={12} />Random weights
+            {health?.model_loaded && (
+              <div style={styles.modelPill}>
+                <span>Trọng số: Calibrated (T=0.78)</span>
               </div>
             )}
           </div>
         </div>
       </header>
 
+      {/* Main Container */}
       <main style={styles.main}>
-        <div style={{ marginBottom: "1.5rem" }}>
-          <h1 style={{ fontSize: 26, fontWeight: 800, background: "linear-gradient(135deg, #0F6E56, #185FA5)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", marginBottom: 6 }}>
-            Real-time Deepfake Detection
-          </h1>
-          <p style={{ fontSize: 14, color: "#5F5E5A" }}>
-            Powered by Swin Transformer + rPPG Fusion — choose a detection mode below
-          </p>
-        </div>
-
-        <div style={styles.tabs}>
+        {/* Academic Navigation Bar */}
+        <div style={styles.navBar}>
           {tabs.map(({ id, icon: Icon, label }) => (
-            <button key={id} style={styles.tab(tab === id)} onClick={() => setTab(id)}>
-              <Icon size={15} />{label}
+            <button key={id} style={styles.navBtn(tab === id)} onClick={() => setTab(id)}>
+              <Icon size={16} />
+              <span>{label}</span>
             </button>
           ))}
         </div>
@@ -564,6 +1197,49 @@ export default function App() {
         {tab === "window" && <WindowMode />}
         {tab === "video" && <VideoMode />}
       </main>
+
+      {/* Professional Academic Footer */}
+      <footer style={styles.footer}>
+        <div style={styles.footerInner}>
+          <div>
+            <div style={styles.footerColTitle}>ĐƠN VỊ ĐÀO TẠO & NGHIÊN CỨU</div>
+            <div style={styles.footerText}>
+              <strong>Trường Đại học Công Thương TP. Hồ Chí Minh (HUIT)</strong><br />
+              <strong>Khoa Công nghệ Thông tin</strong><br />
+              Khóa luận Cử nhân ngành CNTT (Năm học 2025 – 2026)<br />
+              Địa chỉ: 140 Lê Trọng Tấn, Phường Tây Thạnh, Quận Tân Phú, TP. Hồ Chí Minh<br />
+              Cổng thông tin: <a href="https://huit.edu.vn" target="_blank" rel="noreferrer" style={{ color: theme.huitNavy, textDecoration: "none", fontWeight: 600 }}>huit.edu.vn</a>
+            </div>
+          </div>
+
+          <div>
+            <div style={styles.footerColTitle}>ĐỀ TÀI KHÓA LUẬN (MÃ: CNTT-KLCN174)</div>
+            <div style={styles.footerText}>
+              <strong>Tên đề tài:</strong> Phương pháp lai kết hợp đặc trưng không gian và tín hiệu sinh lý để phát hiện Deepfake sử dụng mô hình học sâu và rPPG<br />
+              <strong>Mô hình đề xuất:</strong> DeepfakeFusionModel (Swin Transformer + rPPG + Cross-Attention Network)<br />
+              <strong>Dữ liệu thực nghiệm:</strong> FaceForensics++ C23 & Celeb-DF v2<br />
+              <strong>Độ đo đánh giá:</strong> Accuracy, AUC, EER (Ngưỡng hiệu chuẩn T=0.78), FAR/FRR
+            </div>
+          </div>
+
+          <div>
+            <div style={styles.footerColTitle}>THÀNH VIÊN THỰC HIỆN ĐỀ TÀI</div>
+            <div style={styles.footerText}>
+              <strong>GVHD:</strong> ThS. Phùng Thế Bảo (baopt@huit.edu.vn)<br />
+              <div style={{ marginTop: 6, borderTop: "1px dashed #e5e7eb", paddingTop: 6 }}>
+                <strong>Nhóm sinh viên thực hiện:</strong><br />
+                • Nguyễn Thành Tài — MSSV: 2001230773 (Lớp: 14DHTH05)<br />
+                • Phan Sĩ Thịnh — MSSV: 2001230933 (Lớp: 14DHTH05)<br />
+                • Đoàn Tấn Minh Tân — MSSV: 2001230791 (Lớp: 14DHTH17)
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style={styles.footerBottomBar}>
+          © 2025 – 2026 Khoa Công Nghệ Thông Tin · Trường Đại học Công Thương TP. Hồ Chí Minh (HUIT) · Đề tài CNTT-KLCN174.
+        </div>
+      </footer>
     </div>
   );
 }
