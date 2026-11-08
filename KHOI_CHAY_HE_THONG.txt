@@ -1,0 +1,24 @@
+# ==============================================================================
+# 2 CÂU LỆNH KHỞI CHẠY HỆ THỐNG TRÊN POWERSHELL
+# ==============================================================================
+
+# --- [1] CÂU LỆNH KHỞI CHẠY BACKEND (Copy dòng dưới dán vào PowerShell 1) ---
+cd d:\INTERN_JOB\KHOALUAN_CUNHAN\DeepFake-detection\backend; .\.venv\Scripts\activate; uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+
+# --- [2] CÂU LỆNH KHỞI CHẠY FRONTEND (Copy dòng dưới dán vào PowerShell 2) ---
+cd d:\INTERN_JOB\KHOALUAN_CUNHAN\DeepFake-detection\frontend; npm run dev
+
+
+# ==============================================================================
+# MẸO NHANH: 1 CÂU LỆNH DUY NHẤT TỰ MỞ CẢ 2 CỬA SỔ BACKEND VÀ FRONTEND CÙNG LÚC
+# (Chỉ cần mở 1 PowerShell, copy dòng dưới dán vào là tự bật 2 cửa sổ chạy song song)
+# ==============================================================================
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd d:\INTERN_JOB\KHOALUAN_CUNHAN\DeepFake-detection\backend; .\.venv\Scripts\activate; uvicorn main:app --host 0.0.0.0 --port 8000 --reload"; Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd d:\INTERN_JOB\KHOALUAN_CUNHAN\DeepFake-detection\frontend; npm run dev"
+
+
+# ==============================================================================
+# ĐỊA CHỈ TRUY CẬP ỨNG DỤNG:
+# Giao diện người dùng: http://localhost:5173
+# Tài liệu Swagger API: http://localhost:8000/docs
+# ==============================================================================
