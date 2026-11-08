@@ -30,9 +30,7 @@ try:
 except ImportError:
     ort = None
 
-# ──────────────────────────────────────────────
 # 1. APP INIT
-# ──────────────────────────────────────────────
 app = FastAPI(title="HUIT Deepfake Scanner API", version="2.0")
 
 app.add_middleware(
@@ -43,14 +41,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ──────────────────────────────────────────────
 # 2. MODEL ARCHITECTURE
-# ──────────────────────────────────────────────
 from model_arch import build_fusion_model
 
-# ──────────────────────────────────────────────
 # 3. GLOBAL MODEL SINGLETON
-# ──────────────────────────────────────────────
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 MODEL = None
 MODEL_TYPE = None
@@ -75,14 +69,12 @@ DIFF_EPS = 0.01
 MP_FACE = mp.solutions.face_detection
 INFERENCE_EXECUTOR = concurrent.futures.ThreadPoolExecutor(max_workers=1)
 
-
 def get_model():
     global MODEL, MODEL_TYPE, MODEL_LOADED
     if MODEL is None:
         pth_path = "fusion_model_best.pth"
         onnx_path = "fusion_model_v5_best.onnx"
 
-        # Priority 1: PyTorch latest trained model
         if os.path.exists(pth_path):
             try:
                 model = build_fusion_model()
@@ -94,34 +86,29 @@ def get_model():
                 MODEL = model
                 MODEL_TYPE = "pytorch"
                 MODEL_LOADED = True
-                print(f"✅ Loaded PyTorch model from {pth_path} on {DEVICE}.")
+                print(f"Loaded PyTorch model from {pth_path} on {DEVICE}.")
                 return MODEL
             except Exception as e:
-                print(f"⚠️ Failed to load PyTorch model {pth_path}: {e}")
+                print(f"Failed to load PyTorch model {pth_path}: {e}")
 
-        # Priority 2: ONNX Runtime
         if os.path.exists(onnx_path):
             providers = ['CUDAExecutionProvider', 'CPUExecutionProvider'] if torch.cuda.is_available() else ['CPUExecutionProvider']
             MODEL = ort.InferenceSession(onnx_path, providers=providers)
             MODEL_TYPE = "onnx"
             MODEL_LOADED = True
-            print(f"✅ Loaded ONNX model from {onnx_path}.")
+            print(f"Loaded ONNX model from {onnx_path}.")
             return MODEL
 
         MODEL_LOADED = False
-        print(f"⚠️ Neither {pth_path} nor {onnx_path} found.")
+        print(f"Neither {pth_path} nor {onnx_path} found.")
     return MODEL
-
 
 @app.on_event("startup")
 async def startup():
     get_model()
 
-
-# ──────────────────────────────────────────────
 # 4. INFERENCE HELPER
-# ──────────────────────────────────────────────
-# Optimal EER decision threshold calibrated from Stage 3 validation metrics (eer_threshold = 0.785)
+
 CALIBRATED_EER_THRESHOLD = 0.78
 
 def calibrate_probability(raw_prob: float, threshold: float = CALIBRATED_EER_THRESHOLD) -> float:
@@ -134,7 +121,6 @@ def calibrate_probability(raw_prob: float, threshold: float = CALIBRATED_EER_THR
         return float(0.5 * (raw_prob / max(1e-5, threshold)))
     else:
         return float(0.5 + 0.5 * ((raw_prob - threshold) / max(1e-5, (1.0 - threshold))))
-
 
 def infer_face(face_rgb: np.ndarray, prev_face_rgb: Optional[np.ndarray] = None) -> float:
     """Return calibrated probability 0-1 of deepfake (0.5 threshold boundary)."""
@@ -168,7 +154,6 @@ def infer_face(face_rgb: np.ndarray, prev_face_rgb: Optional[np.ndarray] = None)
         ort_outs = model.run(None, ort_inputs)
         raw_prob = float(ort_outs[0][0][0])
         return calibrate_probability(raw_prob)
-
 
 def infer_faces_batch(face_crops: list) -> list:
     """
@@ -214,12 +199,10 @@ def infer_faces_batch(face_crops: list) -> list:
 
     return [calibrate_probability(p) for p in raw_probs]
 
-
 def frame_to_base64(frame_bgr: np.ndarray, quality: int = 75) -> str:
     """Encode a BGR frame as JPEG base64 string."""
     _, buf = cv2.imencode(".jpg", frame_bgr, [cv2.IMWRITE_JPEG_QUALITY, quality])
     return base64.b64encode(buf).decode("utf-8")
-
 
 def detect_and_analyze(frame_bgr: np.ndarray, face_detection, history: collections.deque,
                        frame_count: int, smoothed_prob: float, prev_face_holder: list = None):
@@ -273,10 +256,7 @@ def detect_and_analyze(frame_bgr: np.ndarray, face_detection, history: collectio
 
     return frame_bgr, smoothed_prob, len(detections) > 0, detections
 
-
-# ──────────────────────────────────────────────
 # 5. REST ENDPOINTS
-# ──────────────────────────────────────────────
 @app.get("/api/health")
 def health():
     return {
@@ -284,7 +264,6 @@ def health():
         "model_loaded": MODEL_LOADED,
         "device": str(DEVICE),
     }
-
 
 def find_target_window(window_id: Optional[int] = None, window_title: Optional[str] = None):
     """
@@ -337,7 +316,6 @@ def find_target_window(window_id: Optional[int] = None, window_title: Optional[s
 
     return None
 
-
 @app.get("/api/windows")
 def list_windows():
     """Return list of visible desktop windows suitable for capture with handles."""
@@ -386,7 +364,6 @@ def list_windows():
         "titles": [w["title"] for w in wins]
     }
 
-
 @app.post("/api/windows/activate")
 async def activate_window(req: Request):
     """Bring target window to foreground."""
@@ -410,7 +387,6 @@ async def activate_window(req: Request):
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
-
 @app.post("/api/analyze-video")
 async def analyze_video(file: UploadFile = File(...)):
     """
@@ -426,7 +402,6 @@ async def analyze_video(file: UploadFile = File(...)):
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     fps = cap.get(cv2.CAP_PROP_FPS) or 25
 
-    # Uniform keyframe sampling: 14 representative frames across video duration
     TARGET_SAMPLES = 8
     step = max(1, total_frames // TARGET_SAMPLES)
 
@@ -472,7 +447,6 @@ async def analyze_video(file: UploadFile = File(...)):
     if not sampled_items:
         return JSONResponse({"error": "Không tìm thấy khuôn mặt nào trong video tải lên."}, status_code=422)
 
-    # Batched PyTorch inference on all keyframe face crops in 1 single forward pass
     face_crops = [item["crop"] for item in sampled_items]
     probs = infer_faces_batch(face_crops)
 
@@ -503,10 +477,7 @@ async def analyze_video(file: UploadFile = File(...)):
         "frames": frame_results,
     }
 
-
-# ──────────────────────────────────────────────
 # 6. WEBSOCKET – WEBCAM
-# ──────────────────────────────────────────────
 @app.websocket("/ws/webcam")
 async def ws_webcam(ws: WebSocket, camera_index: int = 0):
     await ws.accept()
@@ -518,7 +489,6 @@ async def ws_webcam(ws: WebSocket, camera_index: int = 0):
         await ws.close()
         return
 
-    # Set optimal capture resolution for high FPS on CPU
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
     cap.set(cv2.CAP_PROP_FPS, 30)
@@ -536,7 +506,6 @@ async def ws_webcam(ws: WebSocket, camera_index: int = 0):
                 break
             frame = cv2.flip(frame, 1)
 
-            # 1. Check if background inference finished
             if current_task is not None and current_task.done():
                 try:
                     raw = current_task.result()
@@ -546,7 +515,7 @@ async def ws_webcam(ws: WebSocket, camera_index: int = 0):
                     print(f"Async infer error: {ex}")
                 current_task = None
 
-            # 2. Fast face detection (MediaPipe runs in ~5ms)
+             (MediaPipe runs in ~5ms)
             rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             results = face_det.process(rgb)
             detections = []
@@ -565,7 +534,7 @@ async def ws_webcam(ws: WebSocket, camera_index: int = 0):
 
                     face_crop = rgb[y1:y2, x1:x2]
                     if face_crop.size > 0:
-                        # Dispatch inference in background if worker is free
+
                         if current_task is None:
                             current_task = INFERENCE_EXECUTOR.submit(
                                 infer_face, face_crop.copy(), prev_face_crop.copy() if prev_face_crop is not None else None
@@ -589,7 +558,7 @@ async def ws_webcam(ws: WebSocket, camera_index: int = 0):
                         "confidence": round(pct, 1),
                         "bbox": {"x1": x1, "y1": y1, "x2": x2, "y2": y2},
                     })
-                    break  # Focus on primary face for maximum speed
+                    break
 
             b64 = frame_to_base64(frame, quality=60)
             await ws.send_json({
@@ -610,10 +579,7 @@ async def ws_webcam(ws: WebSocket, camera_index: int = 0):
         cap.release()
         face_det.close()
 
-
-# ──────────────────────────────────────────────
 # 7. WEBSOCKET – WINDOW CAPTURE
-# ──────────────────────────────────────────────
 @app.websocket("/ws/window")
 async def ws_window(ws: WebSocket):
     await ws.accept()
@@ -632,7 +598,6 @@ async def ws_window(ws: WebSocket):
     current_task = None
     stop_event = asyncio.Event()
 
-    # Dynamic command listener so user can switch window while scanning
     async def command_listener():
         try:
             while not stop_event.is_set():
@@ -678,7 +643,7 @@ async def ws_window(ws: WebSocket):
                     pass
 
             try:
-                # Calculate coordinates bounded by all monitors
+
                 virt = sct.monitors[0]
                 left = max(virt["left"], min(int(win.left), virt["left"] + virt["width"] - 60))
                 top = max(virt["top"], min(int(win.top), virt["top"] + virt["height"] - 60))
@@ -702,7 +667,6 @@ async def ws_window(ws: WebSocket):
                 await asyncio.sleep(0.2)
                 continue
 
-            # 1. Check if background inference finished
             if current_task is not None and current_task.done():
                 try:
                     raw = current_task.result()
@@ -712,7 +676,6 @@ async def ws_window(ws: WebSocket):
                     print(f"Async infer error: {ex}")
                 current_task = None
 
-            # 2. Fast face detection
             rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             results = face_det.process(rgb)
             detections = []
@@ -754,7 +717,7 @@ async def ws_window(ws: WebSocket):
                         "confidence": round(pct, 1),
                         "bbox": {"x1": x1, "y1": y1, "x2": x2, "y2": y2},
                     })
-                    break  # Focus on primary face
+                    break
 
             b64 = frame_to_base64(frame, quality=55)
             await ws.send_json({
@@ -775,7 +738,6 @@ async def ws_window(ws: WebSocket):
         if current_task is not None and not current_task.done():
             current_task.cancel()
         face_det.close()
-
 
 if __name__ == "__main__":
     import uvicorn

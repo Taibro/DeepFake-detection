@@ -3,23 +3,16 @@ import { Camera, Monitor, Film, RefreshCw, Play, Square, Upload, Maximize, Minim
 
 const API = "http://localhost:8000";
 
-// Professional Human Designer Palette - HUIT University Corporate Identity
 const theme = {
-  huitNavy: "#003b71",       // Official HUIT Deep Navy Blue
-  huitNavyHover: "#002b53",
-  huitBlue: "#005baa",       // HUIT Accent Blue
-  huitRed: "#c91414",        // HUIT Logo Red
-  huitRedHover: "#a60f0f",
-  
+  huitNavy: "#003b71",         huitNavyHover: "#002b53",
+  huitBlue: "#005baa",         huitRed: "#c91414",          huitRedHover: "#a60f0f",
+
   bgCard: "rgba(255, 255, 255, 0.94)",
   bgCardHeader: "rgba(249, 250, 251, 0.96)",
   border: "rgba(209, 213, 219, 0.8)",
   borderLight: "rgba(229, 231, 235, 0.8)",
-  
-  textDark: "#111827",       // Slate 900
-  textMuted: "#4b5563",      // Slate 600
-  textLight: "#9ca3af",      // Slate 400
 
+  textDark: "#111827",         textMuted: "#4b5563",        textLight: "#9ca3af",
   successGreen: "#059669",
   successBg: "#ecfdf5",
   successBorder: "#a7f3d0",
@@ -302,8 +295,7 @@ const styles = {
     fontWeight: 600,
     textAlign: "right",
   },
-  // Professional Academic Footer
-  footer: {
+    footer: {
     backgroundColor: "rgba(255, 255, 255, 0.98)",
     backdropFilter: "blur(16px)",
     borderTop: "2px solid #003b71",
@@ -343,7 +335,6 @@ const styles = {
   },
 };
 
-// Clean Professional Metric Gauge
 function MetricGauge({ prob, label }) {
   const isFake = prob > 0.5;
   const confidence = isFake ? prob * 100 : (1 - prob) * 100;
@@ -386,14 +377,12 @@ function MetricGauge({ prob, label }) {
   );
 }
 
-// Right Analysis Panel
 function ResultsPanel({ detections, smoothedProb, faceFound, mode }) {
   const isFake = smoothedProb > 0.5;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-      {/* Real-time Verdict Card */}
-      <div style={styles.card}>
+            <div style={styles.card}>
         <div style={styles.cardHeader}>
           <span style={styles.cardTitle}>Kết quả Phân tích Trực tiếp</span>
           <span style={styles.cardSubtitle}>
@@ -403,8 +392,7 @@ function ResultsPanel({ detections, smoothedProb, faceFound, mode }) {
         <div style={styles.cardBody}>
           {faceFound ? (
             <div>
-              {/* Verdict Announcement Box */}
-              <div
+                            <div
                 style={{
                   padding: "16px",
                   borderRadius: "6px",
@@ -426,11 +414,9 @@ function ResultsPanel({ detections, smoothedProb, faceFound, mode }) {
                 </div>
               </div>
 
-              {/* Confidence Gauge */}
-              <MetricGauge prob={smoothedProb} label="Xác suất Deepfake Tổng hợp" />
+                            <MetricGauge prob={smoothedProb} label="Xác suất Deepfake Tổng hợp" />
 
-              {/* Detected Faces Table */}
-              <div style={{ marginTop: 16 }}>
+                            <div style={{ marginTop: 16 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: theme.textMuted, textTransform: "uppercase", marginBottom: 6 }}>
                   Danh sách khuôn mặt trích xuất ({detections.length})
                 </div>
@@ -478,8 +464,7 @@ function ResultsPanel({ detections, smoothedProb, faceFound, mode }) {
         </div>
       </div>
 
-      {/* Model Specifications Card */}
-      <div style={styles.card}>
+            <div style={styles.card}>
         <div style={styles.cardHeader}>
           <span style={styles.cardTitle}>Thông tin Mô hình</span>
         </div>
@@ -522,9 +507,6 @@ function ResultsPanel({ detections, smoothedProb, faceFound, mode }) {
   );
 }
 
-// ──────────────────────────────────────────────
-// MODE 1: WEBCAM
-// ──────────────────────────────────────────────
 function WebcamMode() {
   const wsRef = useRef(null);
   const [running, setRunning] = useState(false);
@@ -535,7 +517,7 @@ function WebcamMode() {
   const [fps, setFps] = useState(0);
   const fpsRef = useRef({ count: 0, last: Date.now() });
 
-  const [cameraIndex, setCameraIndex] = useState(0);
+  const [cameraIndex, setCameraIndex] = useState(1);
   const [scanHeight, setScanHeight] = useState(440);
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -579,15 +561,14 @@ function WebcamMode() {
         </div>
         <div style={styles.cardBody}>
           <div style={{ display: "flex", gap: "10px", alignItems: "stretch" }}>
-            {/* Video Canvas */}
-            <div style={{ ...styles.videoFrame, height: scanHeight, flex: 1 }}>
+                        <div style={{ ...styles.videoFrame, height: scanHeight, flex: 1 }}>
               {!frame && <div className="scan-line" />}
               {frame ? (
                 <>
                   <img src={frame} alt="Webcam Feed" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
                   <div style={{ position: "absolute", top: 10, left: 10, right: 10, display: "flex", justifyContent: "space-between", pointerEvents: "none" }}>
                     <div style={styles.hudBadge}>
-                      Camera: {cameraIndex === 0 ? "Webcam Tích hợp (0)" : "OBS Virtual Camera (1)"}
+                      Camera: {cameraIndex === 1 ? "Webcam Rời USB (1)" : cameraIndex === 0 ? "Webcam Laptop (0)" : `Camera (${cameraIndex})`}
                     </div>
                     <div style={styles.hudBadge}>
                       Tốc độ: {fps} FPS
@@ -605,8 +586,7 @@ function WebcamMode() {
               )}
             </div>
 
-            {/* Height Slider */}
-            <div style={styles.sliderContainer}>
+                        <div style={styles.sliderContainer}>
               <span style={{ fontSize: 10, fontWeight: 700, color: theme.textMuted }}>H</span>
               <input
                 type="range"
@@ -629,8 +609,7 @@ function WebcamMode() {
             </div>
           </div>
 
-          {/* Action Toolbar */}
-          <div style={{ marginTop: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ marginTop: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <button style={styles.btnOutline} onClick={() => setIsExpanded(!isExpanded)}>
               {isExpanded ? <><Minimize size={14} /> Thu gọn</> : <><Maximize size={14} /> Mở rộng</>}
             </button>
@@ -642,8 +621,10 @@ function WebcamMode() {
                 disabled={running}
                 style={{ ...styles.select, opacity: running ? 0.6 : 1 }}
               >
-                <option value={0}>Camera 0: Webcam Laptop (Mặc định)</option>
-                <option value={1}>Camera 1: OBS Virtual Camera (Phát giả lập)</option>
+                <option value={1}>Camera 1: Webcam Rời USB (UGREEN 4K / Rời)</option>
+                <option value={0}>Camera 0: Webcam Laptop (Tích hợp)</option>
+                <option value={2}>Camera 2: Webcam Rời USB (Kênh phụ)</option>
+                <option value={3}>Camera 3: OBS Virtual Camera / Khác</option>
               </select>
 
               {!running ? (
@@ -665,9 +646,6 @@ function WebcamMode() {
   );
 }
 
-// ──────────────────────────────────────────────
-// MODE 2: WINDOW CAPTURE
-// ──────────────────────────────────────────────
 function WindowMode() {
   const wsRef = useRef(null);
   const [windows, setWindows] = useState([]);
@@ -695,8 +673,7 @@ function WindowMode() {
       const d = await r.json();
       const list = d.windows || [];
       setWindows(list);
-      // Giữ nguyên cửa sổ người dùng đã chọn nếu còn tồn tại, tránh bị reset khi tải lại
-      setSelectedId(prev => {
+            setSelectedId(prev => {
         if (!list.length) return "";
         const exists = list.some(w => String(w.id ?? w) === String(prev));
         if (exists) return prev;
@@ -707,14 +684,12 @@ function WindowMode() {
 
   useEffect(() => { fetchWindows(); }, []);
 
-  // Xử lý đổi cửa sổ ngay lập tức khi người dùng click dropdown
-  const handleSelectWindow = (newId) => {
+    const handleSelectWindow = (newId) => {
     setSelectedId(newId);
     setErrorMsg("");
     setWarningMsg("");
 
-    // Nếu đang quét, gửi lệnh switch_window qua WebSocket ngay lập tức không cần dừng
-    if (running && wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        if (running && wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       const target = getTargetWin(newId);
       const winId = target?.id ?? (isNaN(Number(newId)) ? null : Number(newId));
       const winTitle = target?.title ?? newId;
@@ -726,8 +701,7 @@ function WindowMode() {
     }
   };
 
-  // Kích hoạt đưa cửa sổ mục tiêu lên phía trước màn hình
-  const activateWindow = async () => {
+    const activateWindow = async () => {
     const target = getTargetWin();
     if (!target && !selectedId) return;
     try {
@@ -934,9 +908,6 @@ function WindowMode() {
   );
 }
 
-// ──────────────────────────────────────────────
-// MODE 3: VIDEO FILE ANALYSIS
-// ──────────────────────────────────────────────
 function VideoMode() {
   const [dragging, setDragging] = useState(false);
   const [file, setFile] = useState(null);
@@ -984,8 +955,7 @@ function VideoMode() {
           </span>
         </div>
         <div style={styles.cardBody}>
-          {/* Upload Dropzone */}
-          <div
+                    <div
             onClick={() => inputRef.current?.click()}
             onDragOver={e => { e.preventDefault(); setDragging(true); }}
             onDragLeave={() => setDragging(false)}
@@ -1010,15 +980,13 @@ function VideoMode() {
             </div>
           </div>
 
-          {/* Video Player Preview */}
-          {videoUrl && (
+                    {videoUrl && (
             <div style={{ marginTop: 14, backgroundColor: "#000", borderRadius: "6px", overflow: "hidden", border: `1px solid ${theme.border}` }}>
               <video src={videoUrl} controls autoPlay muted style={{ width: "100%", maxHeight: 360, display: "block" }} />
             </div>
           )}
 
-          {/* Selected File Details Bar */}
-          {file && (
+                    {file && (
             <div style={{ marginTop: 14, padding: "12px 16px", backgroundColor: "rgba(243, 244, 246, 0.85)", border: `1px solid ${theme.border}`, borderRadius: "6px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div>
                 <span style={{ fontSize: 13, fontWeight: 600, color: theme.textDark }}>{file.name}</span>
@@ -1031,8 +999,7 @@ function VideoMode() {
             </div>
           )}
 
-          {/* Progress bar */}
-          {analyzing && (
+                    {analyzing && (
             <div style={{ marginTop: 14 }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: theme.textMuted, marginBottom: 5 }}>
                 <span>Đang trích xuất và phân tích khung hình tuần tự...</span>
@@ -1052,8 +1019,7 @@ function VideoMode() {
         </div>
       </div>
 
-      {/* Right Column: File Analysis Results */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
         <div style={styles.card}>
           <div style={styles.cardHeader}>
             <span style={styles.cardTitle}>Báo cáo Giám định Tệp tin</span>
@@ -1131,9 +1097,6 @@ function VideoMode() {
   );
 }
 
-// ──────────────────────────────────────────────
-// ROOT APPLICATION
-// ──────────────────────────────────────────────
 export default function App() {
   const [tab, setTab] = useState("webcam");
   const [health, setHealth] = useState(null);
@@ -1153,8 +1116,7 @@ export default function App() {
 
   return (
     <div style={styles.appWrapper}>
-      {/* Official University Header */}
-      <header style={styles.header}>
+            <header style={styles.header}>
         <div style={styles.headerInner}>
           <div style={styles.brandGroup}>
             <img src="/huit-logo.png" alt="Logo HUIT" style={styles.logoImg} />
@@ -1181,10 +1143,8 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Container */}
-      <main style={styles.main}>
-        {/* Academic Navigation Bar */}
-        <div style={styles.navBar}>
+            <main style={styles.main}>
+                <div style={styles.navBar}>
           {tabs.map(({ id, icon: Icon, label }) => (
             <button key={id} style={styles.navBtn(tab === id)} onClick={() => setTab(id)}>
               <Icon size={16} />
@@ -1198,8 +1158,7 @@ export default function App() {
         {tab === "video" && <VideoMode />}
       </main>
 
-      {/* Professional Academic Footer */}
-      <footer style={styles.footer}>
+            <footer style={styles.footer}>
         <div style={styles.footerInner}>
           <div>
             <div style={styles.footerColTitle}>ĐƠN VỊ ĐÀO TẠO & NGHIÊN CỨU</div>
@@ -1230,7 +1189,7 @@ export default function App() {
                 <strong>Nhóm sinh viên thực hiện:</strong><br />
                 • Nguyễn Thành Tài — MSSV: 2001230773 (Lớp: 14DHTH05)<br />
                 • Phan Sĩ Thịnh — MSSV: 2001230933 (Lớp: 14DHTH05)<br />
-                • Đoàn Tấn Minh Tân — MSSV: 2001230791 (Lớp: 14DHTH17)
+                • Đoàn Tấn Minh Tân — MSSV: 2001230791 (Lớp: 14DHTH15)
               </div>
             </div>
           </div>
