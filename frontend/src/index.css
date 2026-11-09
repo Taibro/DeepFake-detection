@@ -18,8 +18,7 @@ body {
   padding: 0;
   font-family: 'Roboto', 'Segoe UI', Arial, sans-serif;
   color: #111827;
-  
-  /* 100% Original Pure Image - No processing, no filters, no overlays */
+
   background-image: url('/hoc-phi-dai-hoc-cong-thuong-1.jpg');
   background-size: cover;
   background-position: center 25%;
@@ -53,7 +52,6 @@ select, input {
   font-family: inherit;
 }
 
-/* Smooth Transitions & Micro-Animations */
 @keyframes fadeIn {
   from {
     opacity: 0;

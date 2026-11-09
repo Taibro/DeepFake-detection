@@ -202,7 +202,11 @@ Execute the corresponding notebook in `1_Data_Preparation/` to generate cached t
 3. `prepare-data-celebdf-v2.ipynb` and `prepare-data-celebdf-v2-rppg.ipynb`: Generates spatial and physiological evaluation caches for Celeb-DF v2.
 
 ### Curriculum Training
-Open `2_Training/train-dffusionmodel-can.ipynb` to execute the three curriculum training stages:
+The training process can be executed end-to-end or staged independently via the notebooks in `2_Training/`:
+1. `train-dffusionmodel-can.ipynb`: End-to-end curriculum training across all 3 stages.
+2. `train-dffusionmodel-can-stage2-rppg-ft.ipynb`: Specialized Stage 2 fine-tuning for the DeepPhysCAN physiological branch (resuming from Stage 1 checkpoint).
+3. `train-dffusionmodel-can-stage3-full-ft.ipynb`: Dedicated Stage 3 end-to-end fine-tuning with FP16 AMP acceleration (resuming from Stage 2 checkpoint).
+
 - **Stage 1 (Epochs 1–9):** Train CrossAttentionFusion head with frozen backbones ($\text{LR} = 4 \times 10^{-4}$).
 - **Stage 2 (Epochs 10–17):** Unfreeze DeepPhysCAN physiological backbone ($\text{LR} = 5 \times 10^{-6}$).
 - **Stage 3 (Epochs 18–23):** End-to-end full network fine-tuning ($\text{LR} = 1 \times 10^{-6}$).
